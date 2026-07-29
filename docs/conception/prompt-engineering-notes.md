@@ -114,35 +114,15 @@ points :
 
 ---
 
-## 5. Nombre de jours en mode "trip" — actuellement libre entre 3 et 6, à revoir
+## 5. Nombre de jours en mode "trip" — **corrigé**, gardé ici pour l'historique
 
-Ligne 6 de `lib/prompt.ts` : `"un voyage de plusieurs jours (entre 3 et 6 jours, à toi de choisir
-une durée cohérente)"`. Analyse :
-
-- **Problème** : "à toi de choisir une durée cohérente" est une instruction vague — cohérente par
-  rapport à quoi ? Rien dans le prompt ne donne à Claude de signal sur lequel baser ce choix (budget ?
-  ambiance ? distance ? aucune corrélation logique évidente entre ces curseurs et une durée de séjour).
-  En pratique, Claude va probablement choisir une valeur par défaut assez stable (ex. toujours 4 ou 5
-  jours) plutôt que de vraiment varier selon la demande — ce qui rend le "entre 3 et 6, à toi de
-  choisir" plus un facteur d'aléa non maîtrisé qu'un vrai levier produit.
-- **Comparaison avec Tonight/Weekend** : ces deux modes ont une durée *fixe et déterministe* (1 jour,
-  2 jours) directement dans le libellé. Le mode Trip est le seul avec une durée non déterministe,
-  ce qui casse la prévisibilité du produit (l'utilisateur ne sait pas à l'avance si son "Trip" fera
-  3 ou 6 jours avant de voir le résultat) et complique le test/QA (une génération pour les mêmes
-  curseurs peut produire des itinéraires de longueurs différentes d'un run à l'autre).
-- **Recommandation n°1 (préférée)** : exposer un contrôle explicite à l'utilisateur pour le nombre de
-  jours en mode Trip (ex. un sélecteur 3/4/5/6 jours dans `HomeScreen`, à ajouter à
-  `GenerateItineraryRequest` — extension mineure du contrat, hors périmètre de cette mission mais à
-  noter). Le prompt deviendrait alors déterministe : "un voyage de {N} jours", exactement comme
-  Tonight/Weekend. Cela supprime l'aléa et améliore la prévisibilité perçue par l'utilisateur.
-- **Recommandation n°2 (sans toucher au contrat de données)** : si on préfère garder le choix "intelligent"
-  côté IA pour le MVP, au moins **corréler explicitement la durée à un des curseurs existants** plutôt
-  que de la laisser arbitraire — par exemple indexer la durée sur le curseur Distance ("Distance
-  faible → privilégie un trip court de 3 jours en une seule ville ; Distance élevée → un trip de 5-6
-  jours pour couvrir plusieurs villes"). Ça donne un sens produit au choix et rend le comportement
-  reproductible/explicable, sans ajouter de champ au formulaire.
-- Dans les deux cas, il faudrait aussi supprimer l'ambiguïté du texte "à toi de choisir une durée
-  cohérente" qui n'apporte aucun signal actionnable au modèle en l'état.
+Ce point (initialement : "à toi de choisir une durée cohérente entre 3 et 6 jours", un aléa non
+maîtrisé sans lien avec les curseurs) a été traité en implémentant la **recommandation n°2** :
+`lib/prompt.ts` a désormais une fonction `totalDaysForMode(mode, distance)` qui indexe la durée du
+mode Trip sur le curseur Distance (3 jours à Distance=0, jusqu'à 6 jours à Distance=100), et
+`buildUserPrompt` impose explicitement `totalDays` et la borne `day` correspondante dans le texte
+envoyé à Claude. Le mode Trip est donc désormais déterministe comme Tonight/Weekend, ce qui règle
+la reproductibilité et donne un sens produit au curseur Distance en mode Trip.
 
 ---
 
@@ -197,3 +177,79 @@ pour réduire le besoin de ce filet plutôt que d'en dépendre :
 - Le system prompt (ligne 37) mentionne déjà "sans que cela soit justifié par le mode 'trip'" pour la
   cohérence géographique — bon réflexe déjà présent, cohérent avec la recommandation du §3 de fixer
   des bornes chiffrées.
+
+---
+
+## 8. Version consolidée — brouillon de texte prêt à intégrer
+
+Les recommandations ci-dessus (§2, §3, §4, §6) sont regroupées ici sous forme de texte directement
+copiable dans `lib/prompt.ts`, pour éviter de les re-dériver plus tard. **Volontairement pas
+appliqué au code** : une modification du prompt change un comportement réel (le contenu généré par
+Claude) qu'on ne peut pas vérifier tant que l'app ne tourne pas réellement (pas de Node.js sur cette
+machine) — cohérent avec la décision de ne plus faire de changements de logique applicative "à
+l'aveugle". À appliquer et tester dès que l'environnement le permet.
+
+### System prompt révisé
+
+```
+Tu es un générateur d'itinéraires de voyage/sortie pour l'application VibeTrip.
+Tu dois répondre UNIQUEMENT avec un objet JSON conforme au schéma structuré fourni, sans texte additionnel.
+Toutes les chaînes de caractères (tripName, description, placeName) doivent être rédigées en français,
+sauf placeName lorsqu'il s'agit du nom propre officiel d'un lieu réel existant, qui doit rester dans
+sa forme originale (ex. "British Museum", pas "Musée Britannique").
+Les descriptions doivent être courtes (1 à 2 phrases, 25 mots maximum).
+Les coordonnées GPS (lat/lng) doivent rester réalistes et cohérentes avec le point de départ fourni
+par l'utilisateur — ne place jamais une étape à des centaines de kilomètres sans que cela soit
+justifié par le mode "trip".
+```
+
+### Rappel de langue dans le user prompt
+
+Ajouter en fin de `buildUserPrompt` (utile si le point de départ est dans un pays non francophone) :
+
+```
+Rappel : réponds uniquement en français, y compris si le point de départ est situé dans un pays non francophone.
+```
+
+### Bornes numériques de Distance (remplace `DISTANCE_HINTS` qualitatif)
+
+```
+tonight: "0 = tout à pied (moins de 1,5 km du point de départ), 50 = quelques stations de transport
+  (jusqu'à 8 km), 100 = jusqu'à 20 km en transport. Ne dépasse jamais 25 km."
+weekend: "0 = rester dans le même quartier/ville (moins de 5 km), 50 = excursions à 15-25 km,
+  100 = jusqu'à 45 km. Ne dépasse jamais 45 km."
+trip: "0 = une seule ville (rayon 10 km), 50 = une région (jusqu'à 150 km entre étapes),
+  100 = plusieurs villes/régions (jusqu'à 350 km entre étapes). Ne dépasse jamais 380 km."
+```
+
+Ces bornes hautes restent sous `PLAUSIBILITY_RADIUS_KM` (`lib/geo.ts`, 30/50/400 km) avec marge de
+sécurité — le prompt vise une cible plus stricte que le filtre serveur.
+
+### Liste explicite des types dans le prompt
+
+Ajouter dans `buildUserPrompt`, en complément de la contrainte de schéma (qui garantit déjà la forme,
+mais pas la qualité sémantique du choix) :
+
+```
+Types disponibles pour chaque étape : restaurant, bar, cafe, museum, park, viewpoint, activity,
+shopping, nightlife, hotel, transport, other. N'utilise "other" qu'en dernier recours.
+```
+
+### Few-shot minimal par mode (exemple pour "weekend")
+
+```
+Exemple de structure attendue (contenu fictif, à adapter à la demande réelle) :
+{
+  "tripName": "Un week-end à Ville-Exemple",
+  "totalDays": 2,
+  "steps": [
+    { "day": 1, "period": "morning", "placeName": "Café Ville-Exemple", "description": "...", "location": {...}, "type": "cafe" },
+    { "day": 1, "period": "evening", "placeName": "Restaurant Ville-Exemple", "description": "...", "location": {...}, "type": "restaurant" },
+    { "day": 2, "period": "midday", "placeName": "Parc Ville-Exemple", "description": "...", "location": {...}, "type": "park" }
+  ]
+}
+```
+
+À décliner en un exemple équivalent pour `tonight` (1 jour) et `trip` (nombre de jours variable
+selon `totalDaysForMode`) — garder chaque exemple très court pour ne pas gonfler le prompt ni
+biaiser le contenu généré vers les noms fictifs de l'exemple.
