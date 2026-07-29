@@ -172,13 +172,12 @@ pour réduire le besoin de ce filet plutôt que d'en dépendre :
    `@anthropic-ai/sdk/helpers/zod` en cas d'échec de parse) — piste, pas une certitude d'implémentation.
 4. **Réduire la surface d'erreur du côté "location"** : `describeLocation` (ligne 24-29) formatte
    soit une ville, soit des coordonnées avec 4 décimales. Rien à changer ici a priori — ce n'est pas
-   une source de parsing error, mais une source potentielle d'hallucination géographique (voir §3 et
-   le point ouvert #2 de `user-flows.md` : le filtrage géo est inactif pour les villes texte). Une
-   piste étroitement liée au prompt : demander explicitement à Claude de rester cohérent avec la
-   ville nommée quand `location` est une ville plutôt que des coordonnées ("les coordonnées que tu
-   fournis doivent correspondre à des lieux réellement situés dans ou à proximité immédiate de
-   {ville}") — utile puisque le filtre serveur ne peut pas vérifier ce cas (pas de `referencePoint`
-   numérique disponible pour une ville texte sans géocodage préalable).
+   une source de parsing error, mais une source potentielle d'hallucination géographique. **Mis à
+   jour** : `route.ts` géocode désormais la ville via `lib/geocode.ts` avant filtrage, donc le
+   `referencePoint` numérique existe aussi pour ce chemin (voir `user-flows.md` §5.1) — le filtre
+   serveur peut donc vérifier ce cas quand le géocodage réussit. Reste une piste liée au prompt :
+   demander explicitement à Claude de rester cohérent avec la ville nommée, en complément du
+   filtrage serveur plutôt qu'à sa place.
 5. **Monitoring qualitatif** : ce document ne peut pas mesurer un "taux d'échec de parsing" réel (pas
    d'exécution possible sur cette machine), mais recommande d'instrumenter `ItineraryParseError` (ex.
    compteur/log structuré côté serveur) dès que l'environnement de test sera disponible, pour

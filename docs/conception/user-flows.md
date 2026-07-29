@@ -122,12 +122,11 @@ Géré dans `LocationInput.tsx` :
   (pas de texte "Localisation refusée, entre une ville manuellement") — le champ apparaît juste
   silencieusement. À clarifier pour l'UX (surtout après un refus explicite vs un simple timeout, qui
   sont actuellement traités de façon identique).
-- Effet en aval : quand la localisation est une ville (`{ city }`), **le filtrage de plausibilité
-  géographique ne s'applique jamais** (`route.ts` : `referencePoint = "lat" in location ? location : null`,
-  puis `filterPlausibleSteps` n'est appelé que si `referencePoint` existe). Autrement dit, en mode
-  "ville texte", Claude peut halluciner des coordonnées GPS incohérentes avec la ville demandée sans
-  qu'aucun garde-fou serveur ne les filtre. C'est un point ouvert important, pas juste un détail : le
-  filtrage géo n'est réellement actif que sur le chemin géolocalisation GPS.
+- **Corrigé** : quand la localisation est une ville (`{ city }`), `route.ts` résout désormais la ville
+  en coordonnées via `lib/geocode.ts` (API Geocoding Mapbox) avant de filtrer, donc
+  `filterPlausibleSteps` s'applique aussi sur ce chemin. Si la ville est introuvable ou l'appel
+  échoue, le filtrage est simplement désactivé pour cette requête (comportement de repli, pas une
+  erreur bloquante) — le filtrage géo n'est donc garanti actif que quand le géocodage réussit.
 
 ### 5.2 Payload invalide (400 `INVALID_INPUT`)
 - Corps JSON malformé (`request.json()` throw) → 400 immédiat, message générique "Corps de requête

@@ -4,6 +4,7 @@ import { generateItineraryRequestSchema } from "@/lib/itinerary-schema";
 import { generateItinerary, ItineraryParseError } from "@/lib/claude";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { filterPlausibleSteps } from "@/lib/geo";
+import { geocodeCity } from "@/lib/geocode";
 import type { ApiErrorResponse, GenerateItineraryResponse } from "@/types/itinerary";
 
 function errorResponse(code: ApiErrorResponse["error"]["code"], message: string, status: number) {
@@ -42,7 +43,7 @@ export async function POST(request: NextRequest) {
     const itinerary = await generateItinerary(parsedRequest.data);
 
     const { location, distance } = parsedRequest.data;
-    const referencePoint = "lat" in location ? location : null;
+    const referencePoint = "lat" in location ? location : await geocodeCity(location.city);
     const steps = referencePoint
       ? filterPlausibleSteps(itinerary.steps, referencePoint, itinerary.mode, distance)
       : itinerary.steps;
