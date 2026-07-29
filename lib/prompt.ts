@@ -2,9 +2,21 @@ import type { GenerateItineraryRequest } from "@/types/itinerary";
 
 const MODE_LABELS: Record<GenerateItineraryRequest["mode"], string> = {
   tonight: "une soirée (aujourd'hui, en une seule journée)",
-  weekend: "un week-end (2 jours)",
-  trip: "un voyage de plusieurs jours (entre 3 et 6 jours, à toi de choisir une durée cohérente)",
+  weekend: "un week-end",
+  trip: "un voyage de plusieurs jours",
 };
+
+/**
+ * Nombre de jours imposé par mode — évite de laisser Claude choisir librement
+ * (source d'incohérence entre générations pour un même réglage). Pour "trip",
+ * le curseur Distance sert de proxy à l'étendue du voyage (0 → 3 jours, 100 → 6 jours).
+ */
+function totalDaysForMode(mode: GenerateItineraryRequest["mode"], distance: number): number {
+  if (mode === "tonight") return 1;
+  if (mode === "weekend") return 2;
+  const t = Math.min(100, Math.max(0, distance)) / 100;
+  return Math.round(3 + t * 3);
+}
 
 const DISTANCE_HINTS: Record<GenerateItineraryRequest["mode"], string> = {
   tonight:
@@ -54,8 +66,11 @@ export function buildUserPrompt(request: GenerateItineraryRequest): string {
     "ambiance festive et énergique"
   );
 
+  const totalDays = totalDaysForMode(mode, distance);
+
   return [
     `Génère un itinéraire pour ${MODE_LABELS[mode]}.`,
+    `Ce voyage doit durer exactement ${totalDays} jour(s) : totalDays doit valoir ${totalDays}, et chaque étape doit avoir un champ day compris entre 1 et ${totalDays}.`,
     `Point de départ : ${describeLocation(location)}.`,
     `Budget souhaité (0-100=${budget}) : ${budgetLabel}.`,
     `Ambiance souhaitée (0-100=${ambiance}) : ${ambianceLabel}.`,

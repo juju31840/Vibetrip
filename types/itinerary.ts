@@ -60,7 +60,8 @@ export type ApiErrorCode =
   | "RATE_LIMITED"
   | "PARSE_ERROR"
   | "CLAUDE_ERROR"
-  | "TIMEOUT";
+  | "TIMEOUT"
+  | "IMPLAUSIBLE_LOCATIONS";
 
 export interface ApiErrorResponse {
   error: {

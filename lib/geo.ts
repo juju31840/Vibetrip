@@ -17,28 +17,42 @@ export function haversineDistanceKm(a: GeoPoint, b: GeoPoint): number {
   return 2 * EARTH_RADIUS_KM * Math.asin(Math.sqrt(h));
 }
 
-/** Rayon de plausibilité maximal (km) autour du point de référence, selon le mode. */
-const PLAUSIBILITY_RADIUS_KM: Record<TripMode, number> = {
-  tonight: 30,
-  weekend: 50,
-  trip: 400,
+/**
+ * Bornes du rayon de plausibilité (km) selon le mode — le curseur "distance" (0-100)
+ * interpole entre min et max, pour que ce réglage ait un effet réel côté serveur et
+ * pas seulement dans le texte envoyé à Claude.
+ */
+const PLAUSIBILITY_RADIUS_KM: Record<TripMode, { min: number; max: number }> = {
+  tonight: { min: 5, max: 30 },
+  weekend: { min: 15, max: 50 },
+  trip: { min: 100, max: 400 },
 };
+
+function plausibilityRadiusKm(mode: TripMode, distance: number): number {
+  const { min, max } = PLAUSIBILITY_RADIUS_KM[mode];
+  const t = Math.min(100, Math.max(0, distance)) / 100;
+  return min + (max - min) * t;
+}
 
 export function isPlausibleStepLocation(
   stepLocation: GeoPoint,
   referencePoint: GeoPoint,
-  mode: TripMode
+  mode: TripMode,
+  distance: number
 ): boolean {
-  return haversineDistanceKm(stepLocation, referencePoint) <= PLAUSIBILITY_RADIUS_KM[mode];
+  return haversineDistanceKm(stepLocation, referencePoint) <= plausibilityRadiusKm(mode, distance);
 }
 
 /** Filtre les étapes dont les coordonnées sont trop éloignées du point de référence pour être crédibles. */
 export function filterPlausibleSteps<T extends { location: GeoPoint }>(
   steps: T[],
   referencePoint: GeoPoint,
-  mode: TripMode
+  mode: TripMode,
+  distance: number
 ): T[] {
-  return steps.filter((step) => isPlausibleStepLocation(step.location, referencePoint, mode));
+  return steps.filter((step) =>
+    isPlausibleStepLocation(step.location, referencePoint, mode, distance)
+  );
 }
 
 export interface MapBounds {

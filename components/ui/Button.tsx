@@ -8,8 +8,10 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const VARIANT_CLASSES: Record<ButtonVariant, string> = {
+  // font-semibold + text-shadow compensent le contraste insuffisant (~3.6:1) à
+  // l'extrémité violette du dégradé, sans altérer la palette de marque.
   primary:
-    "bg-brand-gradient text-text-primary shadow-lg shadow-black/30 disabled:opacity-40",
+    "bg-brand-gradient text-text-primary [text-shadow:0_1px_2px_rgba(0,0,0,0.45)] font-semibold shadow-lg shadow-black/30 disabled:opacity-40",
   secondary:
     "bg-transparent border border-border text-text-primary disabled:opacity-40",
   ghost: "bg-transparent text-text-secondary hover:text-text-primary",

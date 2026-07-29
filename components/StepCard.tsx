@@ -22,14 +22,25 @@ export function StepCard({ step, isActive, onSelect }: StepCardProps) {
       onClick={() => onSelect(step.id)}
       className={clsx(
         "flex w-full flex-col gap-1 rounded-2xl border px-4 py-3 text-left transition-colors",
-        isActive ? "border-transparent bg-brand-gradient" : "border-border bg-surface"
+        isActive
+          ? "border-transparent bg-brand-gradient [text-shadow:0_1px_2px_rgba(0,0,0,0.45)]"
+          : "border-border bg-surface"
       )}
     >
-      <span className="text-xs uppercase tracking-wide text-text-secondary">
+      <span
+        className={clsx(
+          "text-xs uppercase tracking-wide",
+          isActive ? "text-text-primary/90" : "text-text-secondary"
+        )}
+      >
         {PERIOD_LABELS[step.period]}
       </span>
-      <span className="text-base font-medium text-text-primary">{step.placeName}</span>
-      <span className="text-sm text-text-secondary">{step.description}</span>
+      <span className="text-base font-semibold text-text-primary">{step.placeName}</span>
+      <span
+        className={clsx("text-sm", isActive ? "text-text-primary/90" : "text-text-secondary")}
+      >
+        {step.description}
+      </span>
     </button>
   );
 }

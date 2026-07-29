@@ -35,21 +35,25 @@ export async function POST(request: NextRequest) {
 
   const parsedRequest = generateItineraryRequestSchema.safeParse(body);
   if (!parsedRequest.success) {
-    return errorResponse(
-      "INVALID_INPUT",
-      parsedRequest.error.issues[0]?.message ?? "Payload invalide.",
-      400
-    );
+    return errorResponse("INVALID_INPUT", "Les paramètres envoyés sont invalides.", 400);
   }
 
   try {
     const itinerary = await generateItinerary(parsedRequest.data);
 
-    const { location } = parsedRequest.data;
+    const { location, distance } = parsedRequest.data;
     const referencePoint = "lat" in location ? location : null;
     const steps = referencePoint
-      ? filterPlausibleSteps(itinerary.steps, referencePoint, itinerary.mode)
+      ? filterPlausibleSteps(itinerary.steps, referencePoint, itinerary.mode, distance)
       : itinerary.steps;
+
+    if (steps.length === 0) {
+      return errorResponse(
+        "IMPLAUSIBLE_LOCATIONS",
+        "Claude n'a pas retourné d'étape avec des coordonnées plausibles pour cette position. Réessaie, ou élargis le curseur Distance.",
+        502
+      );
+    }
 
     const response: GenerateItineraryResponse = { itinerary: { ...itinerary, steps } };
     return NextResponse.json(response);
