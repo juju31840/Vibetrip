@@ -46,7 +46,12 @@ de plausibilité — sans réseau ni coût. Le retirer pour tester la vraie gén
 
 La génération Claude elle-même n'a jamais tourné : qualité du prompt, respect du schéma Zod par la
 sortie réelle, langue française des `placeName`/`description`, plausibilité des coordonnées
-produites. Tout cela attend du crédit API. Voir la skill `verify-itinerary-contract`.
+produites. Tout cela attend du crédit API.
+
+Dès que le compte est rechargé : retirer `VIBETRIP_MOCK` de `.env.local`, lancer `npm run dev`,
+puis `npm run eval -- --out rapport.md`. Le script génère 7 scénarios (3 modes, extrêmes de
+curseurs, GPS et ville texte), vérifie mécaniquement le contrat et sort un rapport à juger à la
+lecture — c'est ce jugement humain qui valide la fonction centrale, pas le script.
 
 ## Points ouverts (non bloquants)
 
