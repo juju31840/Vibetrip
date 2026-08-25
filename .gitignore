@@ -21,3 +21,6 @@ npm-debug.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# workspace VS Code (chemins locaux, machine-spécifique)
+*.code-workspace

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import Map, { Marker, type MapRef } from "react-map-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { computeBounds } from "@/lib/geo";
@@ -32,7 +32,13 @@ interface MapViewProps {
 export function MapView({ steps, activeStepId, onMarkerClick }: MapViewProps) {
   const mapRef = useRef<MapRef>(null);
 
-  useEffect(() => {
+  /**
+   * Cadre la carte sur l'ensemble des étapes. Déclenché à la fois par `onLoad` et par le
+   * changement d'étapes : au montage, l'effet seul s'exécute avant que la carte ne soit
+   * réellement prête et le `fitBounds` est alors perdu (tous les marqueurs restent hors
+   * du cadre, la vue conservant l'`initialViewState`).
+   */
+  const fitToSteps = useCallback(() => {
     const bounds = computeBounds(steps);
     if (!bounds || !mapRef.current) return;
     mapRef.current.fitBounds(
@@ -42,8 +48,11 @@ export function MapView({ steps, activeStepId, onMarkerClick }: MapViewProps) {
       ],
       { padding: 60, duration: 0 }
     );
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [steps]);
+
+  useEffect(() => {
+    fitToSteps();
+  }, [fitToSteps]);
 
   useEffect(() => {
     const activeStep = steps.find((step) => step.id === activeStepId);
@@ -68,6 +77,7 @@ export function MapView({ steps, activeStepId, onMarkerClick }: MapViewProps) {
       }}
       mapStyle="mapbox://styles/mapbox/dark-v11"
       style={{ width: "100%", height: "100%" }}
+      onLoad={fitToSteps}
     >
       {steps.map((step) => (
         <Marker

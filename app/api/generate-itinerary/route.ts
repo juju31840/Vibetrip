@@ -18,15 +18,6 @@ function getClientIp(request: NextRequest): string {
 }
 
 export async function POST(request: NextRequest) {
-  const rateLimit = checkRateLimit(getClientIp(request));
-  if (!rateLimit.allowed) {
-    return errorResponse(
-      "RATE_LIMITED",
-      "Trop de générations récentes, réessaie dans un instant.",
-      429
-    );
-  }
-
   let body: unknown;
   try {
     body = await request.json();
@@ -37,6 +28,18 @@ export async function POST(request: NextRequest) {
   const parsedRequest = generateItineraryRequestSchema.safeParse(body);
   if (!parsedRequest.success) {
     return errorResponse("INVALID_INPUT", "Les paramètres envoyés sont invalides.", 400);
+  }
+
+  // Quota décompté seulement après validation : le but est de limiter les appels payants à
+  // Claude, pas les requêtes malformées. Le compter avant laisserait un bug côté client
+  // épuiser le quota d'un utilisateur pour une heure sans qu'aucune génération ait eu lieu.
+  const rateLimit = checkRateLimit(getClientIp(request));
+  if (!rateLimit.allowed) {
+    return errorResponse(
+      "RATE_LIMITED",
+      "Trop de générations récentes, réessaie dans un instant.",
+      429
+    );
   }
 
   try {
@@ -59,6 +62,10 @@ export async function POST(request: NextRequest) {
     const response: GenerateItineraryResponse = { itinerary: { ...itinerary, steps } };
     return NextResponse.json(response);
   } catch (error) {
+    // Log serveur : les messages renvoyés au client sont volontairement génériques,
+    // sans trace ici le diagnostic d'un 502 est impossible (cause réelle invisible).
+    console.error("[generate-itinerary]", error);
+
     if (error instanceof ItineraryParseError) {
       return errorResponse("PARSE_ERROR", error.message, 502);
     }

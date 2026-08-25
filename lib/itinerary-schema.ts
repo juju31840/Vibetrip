@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { z } from "zod/v4";
 
 export const tripModeSchema = z.enum(["tonight", "weekend", "trip"]);
 

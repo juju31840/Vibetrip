@@ -60,7 +60,7 @@ export function LocationInput({ value, onChange }: LocationInputProps) {
           placeholder="Ou entre une ville de départ"
           value={city}
           onChange={(event) => handleCityChange(event.target.value)}
-          className="rounded-xl border border-border bg-surface px-4 py-3 text-sm text-text-primary placeholder:text-text-secondary"
+          className="rounded-xl border border-border bg-surface px-4 py-3 text-base text-text-primary placeholder:text-text-secondary"
         />
       )}
     </div>

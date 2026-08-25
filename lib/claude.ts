@@ -3,6 +3,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { claudeItinerarySchema } from "./itinerary-schema";
 import { buildSystemPrompt, buildUserPrompt } from "./prompt";
+import { buildMockItinerary } from "./mock-itinerary";
 import type { GenerateItineraryRequest, Itinerary, ItineraryStep } from "@/types/itinerary";
 
 const client = new Anthropic();
@@ -33,6 +34,12 @@ async function requestItinerary(request: GenerateItineraryRequest, retry: boolea
  * quelles pour que l'appelant les distingue via `instanceof Anthropic.APIError`.
  */
 export async function generateItinerary(request: GenerateItineraryRequest): Promise<Itinerary> {
+  // Mock de développement (VIBETRIP_MOCK=1) : évite de consommer du crédit API pour
+  // itérer sur la carte et la bottom sheet. Voir lib/mock-itinerary.ts.
+  if (process.env.VIBETRIP_MOCK === "1") {
+    return buildMockItinerary(request);
+  }
+
   let response = await requestItinerary(request, false);
 
   if (!response.parsed_output) {

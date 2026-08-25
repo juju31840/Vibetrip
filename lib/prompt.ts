@@ -11,7 +11,7 @@ const MODE_LABELS: Record<GenerateItineraryRequest["mode"], string> = {
  * (source d'incohérence entre générations pour un même réglage). Pour "trip",
  * le curseur Distance sert de proxy à l'étendue du voyage (0 → 3 jours, 100 → 6 jours).
  */
-function totalDaysForMode(mode: GenerateItineraryRequest["mode"], distance: number): number {
+export function totalDaysForMode(mode: GenerateItineraryRequest["mode"], distance: number): number {
   if (mode === "tonight") return 1;
   if (mode === "weekend") return 2;
   const t = Math.min(100, Math.max(0, distance)) / 100;

@@ -21,14 +21,19 @@ function groupStepsByDay(steps: ItineraryStep[]): [number, ItineraryStep[]][] {
   return [...groups.entries()].sort(([dayA], [dayB]) => dayA - dayB);
 }
 
-const SNAP_POINTS = [0.2, 0.55, 0.92];
+const SNAP_POINTS: (number | string)[] = [0.2, 0.55, 0.92];
 
 export function ItineraryBottomSheet({
   steps,
   activeStepId,
   onSelectStep,
 }: ItineraryBottomSheetProps) {
-  const [snap, setSnap] = useState<number | string | null>(SNAP_POINTS[1]);
+  // La sheet s'ouvre sur le premier snap point, et pas sur un autre : au premier rendu
+  // vaul n'a pas encore mesuré la fenêtre, tous ses offsets valent 0, et son
+  // `snapToPoint(0)` se termine par `setActiveSnapPoint(snapPoints[0])` — qui écrase toute
+  // valeur initiale différente puisque le composant est contrôlé. Ouvrir sur l'aperçu
+  // convient de toute façon à une app centrée carte : l'itinéraire se déplie au glissement.
+  const [snap, setSnap] = useState<number | string | null>(SNAP_POINTS[0]!);
   const dayGroups = groupStepsByDay(steps);
 
   return (
@@ -36,12 +41,21 @@ export function ItineraryBottomSheet({
       open
       onOpenChange={() => {}}
       modal={false}
+      // La sheet fait partie de l'écran de résultat : la faire glisser vers le bas doit
+      // la replier sur l'aperçu, jamais la fermer (elle n'a aucun moyen d'être rouverte).
+      dismissible={false}
       snapPoints={SNAP_POINTS}
       activeSnapPoint={snap}
       setActiveSnapPoint={setSnap}
     >
       <Drawer.Portal>
-        <Drawer.Content className="fixed bottom-0 left-0 right-0 flex max-h-[92vh] flex-col rounded-t-sheet border-t border-border bg-surface">
+        {/* Pleine hauteur (et non `max-h-[92vh]`) : vaul traduit la sheet de
+            (1 - snap) × hauteur de fenêtre. Le calcul ne donne « snap % visibles » que si
+            l'élément fait toute la hauteur de la fenêtre — sinon le décalage est appliqué à
+            un élément plus court ancré en bas et la sheet ne montre qu'un liseré. */}
+        {/* `z-20` indispensable : les contrôles Mapbox (logo, attribution) sont en
+            `z-index: 2`, et sans niveau explicite ils passent par-dessus la sheet. */}
+        <Drawer.Content className="fixed bottom-0 left-0 right-0 z-20 flex h-screen flex-col rounded-t-sheet border-t border-border bg-surface">
           <div className="mx-auto mt-3 h-1.5 w-10 rounded-full bg-border" />
           <div className="flex-1 overflow-y-auto px-4 pb-6 pt-4">
             {dayGroups.map(([day, daySteps]) => (

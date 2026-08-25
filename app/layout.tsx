@@ -9,10 +9,11 @@ export const metadata: Metadata = {
   description: "Choisis ta vibe, l'IA construit ton itinéraire.",
 };
 
+// Pas de maximumScale : bloquer le pinch-zoom casse l'accessibilité (WCAG 1.4.4).
+// L'auto-zoom iOS au focus est évité en gardant les champs de saisie à 16px (text-base).
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  maximumScale: 1,
   themeColor: "#0B0B12",
 };
 

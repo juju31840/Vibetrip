@@ -16,9 +16,10 @@ interface ResultScreenProps {
 }
 
 export function ResultScreen({ itinerary, onRestart }: ResultScreenProps) {
-  const [activeStepId, setActiveStepId] = useState<string | null>(
-    itinerary.steps[0]?.id ?? null
-  );
+  // Volontairement null au montage : sélectionner une étape d'emblée déclencherait le
+  // `flyTo` de MapView, qui écraserait le `fitBounds` initial et masquerait les autres
+  // étapes. La vue d'ensemble d'abord, le zoom seulement sur action de l'utilisateur.
+  const [activeStepId, setActiveStepId] = useState<string | null>(null);
 
   return (
     <main className="relative min-h-screen overflow-hidden">
