@@ -88,6 +88,25 @@ where places.fsq_id = v.id;
 Rappel du piège d'accès : depuis Python, poser un `User-Agent` explicite sur les appels à l'API de
 gestion Supabase, sinon le pare-feu répond `403 Forbidden` sur des requêtes pourtant valides.
 
+## Le script
+
+`npm run verify:google -- [--lot 150] [--sec]` — `--sec` liste la file et le coût sans appeler.
+`TRACE=1` affiche la décision candidat par candidat, ce qui est la seule façon rapide de
+comprendre un taux de rejet anormal.
+
+**Deux réglages appris en le mettant au point :**
+
+- **Cinq candidats, pas un.** Avec un seul résultat, « Place Gambetta » et « Théâtre du Capitole »
+  étaient déclarés introuvables — le moteur les classait deuxième. C'est la leçon déjà consignée
+  pour Mapbox. Le tarif est à l'appel, pas au résultat.
+- **Un verrou de proximité en plus du verrou de noms.** `place-match` est calibré pour Mapbox, où
+  le danger est de confirmer « Le Baron » par « Le Baron Rouge ». Google met la raison sociale
+  complète dans le nom — « Horace » devient « HORACE café.cuisine.canons » — et le verrou strict
+  rejetait 62 % de lieux pourtant réels. En dessous de **60 m**, il suffit donc que tous les mots
+  distinctifs du nom d'origine se retrouvent dans le nom Google : la géographie lève l'ambiguïté
+  que le nom ne lève pas. Ce qui écarte toujours une reprise sous une autre enseigne
+  (« Codebar » devenu « Buster », à 8 m : rejeté).
+
 ## Rendre compte
 
 Trois nombres — vérifiés, confirmés ouverts, détectés fermés — puis **la liste nominative des

@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "next lint",
     "eval": "node scripts/eval-itineraries.mjs",
-    "check:match": "node scripts/check-place-match.mjs"
+    "check:match": "node scripts/check-place-match.mjs",
+    "verify:google": "node scripts/verify-google.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.120.0",
