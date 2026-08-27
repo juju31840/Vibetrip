@@ -1,48 +1,46 @@
 "use client";
 
-import { THEMES as THEME_LIST } from "./themes";
+import { themeForType as themeOf } from "./themes";
 import type { ItineraryStep, ThemeId } from "@/types/itinerary";
 
 /**
- * Lieux réels situés autour d'une étape, cherchés par thème dans le référentiel Mapbox.
+ * Lieux réels situés autour d'une étape, cherchés par envie dans le socle de lieux.
  *
- * Deux problèmes résolus d'un coup. D'abord le nombre : les alternatives tirées des autres
- * propositions se comptaient sur les doigts d'une main — pour un créneau donné il n'en existait
- * souvent qu'une seule. Ensuite le choix : on ne pouvait pas demander « plutôt quelque chose de
- * culturel ». Ici chaque thème interroge le référentiel autour du point, ce qui donne des
- * dizaines de possibilités, **toutes réelles par construction** — elles viennent de la base, pas
- * du modèle, donc la question « ce lieu existe-t-il ? » ne se pose pas.
+ * Deux problèmes résolus d'un coup à l'origine. D'abord le nombre : les alternatives tirées des
+ * autres propositions se comptaient sur les doigts d'une main — pour un créneau donné il n'en
+ * existait souvent qu'une seule. Ensuite le choix : on ne pouvait pas demander « plutôt quelque
+ * chose de culturel ».
+ *
+ * **Passé du référentiel Mapbox au socle Supabase le 27/08/2026.** L'incohérence sautait aux
+ * yeux une fois la génération ancrée : les étapes venaient d'une source et leurs remplaçantes
+ * d'une autre, avec des couvertures et des catégories différentes. Le socle est plus fourni,
+ * n'est pas facturé à l'appel, applique les mêmes exclusions que la génération (coordonnées de
+ * repli, enseignes de chaîne, lieux fermés), et supprime une dépendance externe côté navigateur.
  *
  * Aucun appel au modèle : la réponse arrive en quelques centaines de millisecondes.
  */
 
-const SEARCH_URL = "https://api.mapbox.com/search/searchbox/v1/category";
+const URL_BASE = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const CLE = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
 
-/**
- * Rayon de recherche, **en kilomètres** — l'API le refuse au-delà de 10 et répond 400. Écrit
- * en mètres au premier essai, il produisait une erreur silencieuse côté interface : le panneau
- * affichait « rien dans les environs » alors que la requête était simplement invalide.
- */
-const RADIUS_KM = 2;
+/** Le panneau propose des alternatives *à proximité* : au-delà, ce n'est plus la même sortie. */
+const RAYON_KM = 2;
 
 export { THEMES, themeForType } from "./themes";
 export type { ThemeId } from "@/types/itinerary";
 
-
-interface CategoryResponse {
-  features?: {
-    geometry: { coordinates: [number, number] };
-    properties: {
-      mapbox_id?: string;
-      name?: string;
-      full_address?: string;
-      place_formatted?: string;
-    };
-  }[];
+interface LigneRpc {
+  fsq_id: string;
+  nom: string;
+  lat: number;
+  lng: number;
+  adresse: string | null;
+  type_lieu: string;
+  distance_m: number;
 }
 
 /**
- * Cherche des lieux du thème demandé autour d'une étape et les renvoie sous la forme d'étapes
+ * Cherche des lieux de l'envie demandée autour d'une étape et les renvoie sous la forme d'étapes
  * prêtes à remplacer l'originale (même jour, même créneau — seul le lieu change).
  *
  * `excludeNames` évite de proposer ce qui est déjà dans l'itinéraire.
@@ -53,74 +51,77 @@ export async function findNearby(
   excludeNames: string[],
   limit = 8
 ): Promise<ItineraryStep[]> {
-  const token = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
-  const definition = THEME_LIST.find((item) => item.id === theme);
-  if (!token || !definition) return [];
+  if (!URL_BASE || !CLE) return [];
 
-  const excluded = new Set(excludeNames.map(normalize));
-  const seen = new Set<string>();
-  const results: ItineraryStep[] = [];
-
-  // Les catégories d'un même thème sont interrogées en parallèle : « Boire un verre » couvre
-  // les bars et les cafés, les enchaîner doublerait l'attente pour rien.
-  const responses = await Promise.all(
-    definition.categories.map((category) => fetchCategory(category, origin, token))
-  );
-
-  for (const features of responses) {
-    for (const feature of features) {
-      const name = feature.properties.name;
-      if (!name) continue;
-
-      const key = normalize(name);
-      if (excluded.has(key) || seen.has(key)) continue;
-      seen.add(key);
-
-      const [lng, lat] = feature.geometry.coordinates;
-      results.push({
-        id: `nearby-${feature.properties.mapbox_id ?? key}`,
-        day: origin.day,
-        period: origin.period,
-        placeName: name,
-        description: definition.label,
-        location: { lat, lng },
-        type: definition.type,
-        // Le lieu sort du référentiel : son existence et son adresse sont acquises, il n'y a
-        // rien à confirmer sur place, contrairement à ce que le modèle propose.
-        verified: true,
-        address: feature.properties.full_address ?? feature.properties.place_formatted ?? null,
-      });
-    }
-  }
-
-  return results.slice(0, limit);
-}
-
-async function fetchCategory(
-  category: string,
-  origin: ItineraryStep,
-  token: string
-): Promise<NonNullable<CategoryResponse["features"]>> {
-  const url =
-    `${SEARCH_URL}/${encodeURIComponent(category)}` +
-    `?proximity=${origin.location.lng},${origin.location.lat}` +
-    `&radius=${RADIUS_KM}&limit=10&language=fr&access_token=${token}`;
-
+  let lignes: LigneRpc[];
   try {
-    const response = await fetch(url);
+    const response = await fetch(`${URL_BASE}/rest/v1/rpc/lieux_par_theme`, {
+      method: "POST",
+      headers: { apikey: CLE, Authorization: `Bearer ${CLE}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        p_lat: origin.location.lat,
+        p_lng: origin.location.lng,
+        p_theme: theme,
+        p_rayon_km: RAYON_KM,
+        // On demande plus que nécessaire : une partie sera écartée comme déjà présente.
+        p_limite: limit * 3,
+      }),
+    });
     if (!response.ok) return [];
-    const data = (await response.json()) as CategoryResponse;
-    return data.features ?? [];
+    lignes = (await response.json()) as LigneRpc[];
   } catch {
-    // Une catégorie indisponible ne doit pas vider tout le panneau : les autres répondront.
+    // Socle indisponible : le panneau se contente des alternatives des autres propositions.
     return [];
   }
+
+  const exclus = new Set(excludeNames.map(normalize));
+  const vus = new Set<string>();
+  const resultats: ItineraryStep[] = [];
+
+  for (const ligne of lignes) {
+    const cle = normalize(ligne.nom);
+    if (exclus.has(cle) || vus.has(cle)) continue;
+    vus.add(cle);
+
+    resultats.push({
+      id: `nearby-${ligne.fsq_id}`,
+      day: origin.day,
+      period: origin.period,
+      placeName: ligne.nom,
+      description: descriptionCourte(ligne),
+      location: { lat: ligne.lat, lng: ligne.lng },
+      type: ligne.type_lieu as ItineraryStep["type"],
+      // Le lieu sort du socle : son existence et son adresse sont acquises, il n'y a rien à
+      // confirmer sur place, contrairement à ce que le modèle propose de lui-même.
+      verified: true,
+      address: ligne.adresse,
+    });
+    if (resultats.length >= limit) break;
+  }
+
+  return resultats;
 }
+
+/**
+ * Une ligne de contexte, pas une description rédigée : ces alternatives ne passent par aucun
+ * modèle, et inventer une phrase d'ambiance serait exactement ce qu'on s'interdit ailleurs.
+ * La distance est l'information utile — c'est elle qui dit si le remplacement tient la route.
+ */
+function descriptionCourte(ligne: LigneRpc): string {
+  const distance =
+    ligne.distance_m < 1000
+      ? `à ${ligne.distance_m} m`
+      : `à ${(ligne.distance_m / 1000).toFixed(1)} km`.replace(".", ",");
+  return ligne.adresse ? `${ligne.adresse} — ${distance}` : `${distance} de l'étape remplacée`;
+}
+
+/** Réexporté pour les appelants qui ouvrent le panneau sur l'onglet correspondant à l'étape. */
+export const themeForStepType = themeOf;
 
 function normalize(value: string): string {
   return value
     .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[̀-ͯ]/g, "")
     .toLowerCase()
     .trim();
 }
