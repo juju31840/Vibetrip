@@ -1,8 +1,8 @@
 import "server-only";
 import Anthropic from "@anthropic-ai/sdk";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
-import { claudeItinerarySchema, proposalCountForMode } from "./itinerary-schema";
-import { buildSystemPrompt, buildUserPrompt, PROPOSAL_ANGLES } from "./prompt";
+import { claudeItinerarySchemaFor, proposalCountForMode } from "./itinerary-schema";
+import { buildSystemPrompt, buildUserPrompt, PROPOSAL_ANGLES, totalDaysForMode } from "./prompt";
 import { buildMockItineraries } from "./mock-itinerary";
 import {
   fetchCandidates,
@@ -17,11 +17,23 @@ import type { GenerateItineraryRequest, GeoPoint, Itinerary, ItineraryStep } fro
 const client = new Anthropic();
 
 /**
- * Surchargeable par `VIBETRIP_MODEL` pour comparer deux modèles à code identique — c'est ainsi
- * qu'a été mesuré l'écart entre Sonnet et Haiku (voir « Latence » dans CLAUDE.md). En l'absence
- * de la variable, le modèle par défaut du produit.
+ * Haiku depuis le 27/08/2026, et c'est un renversement de la décision précédente.
+ *
+ * Haiku avait été écarté sur deux défauts. Le premier — **il perdait des propositions entières**,
+ * ses coordonnées fausses étant vidées par le filtre de plausibilité — a disparu mécaniquement
+ * avec l'ancrage sur le socle : les coordonnées ne viennent plus du modèle. Le second — **il ne
+ * respectait pas le contrat des périodes** — est réglé par le schéma contraint
+ * (`claudeItinerarySchemaFor`), et la mesure a montré au passage que Sonnet l'enfreignait aussi.
+ *
+ * Les deux raisons de l'écarter étant tombées, il reste l'écart de vitesse, mesuré à contrat et
+ * socle identiques : un week-end à Bordeaux livre ses trois propositions en **7,7 s contre
+ * 19,6 s**. Le taux de confirmation ne bouge pas (86-90 % contre 82-100 %), puisque les lieux
+ * viennent désormais de la base et non de ce que le modèle croit savoir.
+ *
+ * Surchargeable par `VIBETRIP_MODEL` — c'est ainsi que la comparaison a été faite, et c'est le
+ * chemin de retour si la qualité rédactionnelle devait décevoir à l'usage.
  */
-const MODEL = process.env.VIBETRIP_MODEL ?? "claude-sonnet-5";
+const MODEL = process.env.VIBETRIP_MODEL ?? "claude-haiku-4-5-20251001";
 const MAX_TOKENS = 6000;
 
 export class ItineraryParseError extends Error {}
@@ -47,7 +59,14 @@ async function requestItinerary(
     model: MODEL,
     max_tokens: MAX_TOKENS,
     system: systemPrompt,
-    output_config: { format: zodOutputFormat(claudeItinerarySchema) },
+    // Le schéma est resserré sur le mode : en « ce soir », `period` ne peut valoir qu'`evening`,
+    // et `totalDays` est figé. Ce que le prompt demandait sans être toujours suivi devient ici
+    // impossible à enfreindre.
+    output_config: {
+      format: zodOutputFormat(
+        claudeItinerarySchemaFor(request.mode, totalDaysForMode(request.mode, request.distance))
+      ),
+    },
     messages: [{ role: "user", content: buildUserPrompt(request, candidates) }],
   });
 }

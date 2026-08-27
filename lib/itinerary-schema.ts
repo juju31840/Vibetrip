@@ -1,4 +1,5 @@
 import { z } from "zod/v4";
+import type { TripMode } from "@/types/itinerary";
 
 export const tripModeSchema = z.enum(["tonight", "weekend", "trip"]);
 
@@ -59,6 +60,36 @@ export const claudeItineraryStepSchema = itineraryStepSchema.omit({ id: true }).
 export const claudeItinerarySchema = itinerarySchema.omit({ id: true }).extend({
   steps: z.array(claudeItineraryStepSchema).min(1),
 });
+
+/**
+ * Le schéma resserré sur le mode demandé — et c'est une contrainte, pas une consigne.
+ *
+ * Le prompt demandait déjà une soirée en mode « ce soir » ; mesuré, **les deux modèles s'en
+ * affranchissent** — Sonnet a proposé du `morning` et du `midday` à Paris, Haiku du `midday`.
+ * Concrètement : proposer un musée « le matin » à quelqu'un qui ouvre l'application à 20 h.
+ * C'était le grief retenu contre Haiku ; il n'était pas le seul concerné.
+ *
+ * Une consigne se néglige, un schéma non : en structured output, l'API ne peut produire que ce
+ * que le schéma autorise. Le contrat cesse d'être une demande polie.
+ *
+ * `totalDays` est borné de la même façon, pour la même raison : le nombre de jours est décidé par
+ * `totalDaysForMode`, pas par le modèle.
+ */
+export function claudeItinerarySchemaFor(mode: TripMode, totalDays: number) {
+  const period = mode === "tonight" ? z.literal("evening") : periodSchema;
+
+  return itinerarySchema.omit({ id: true }).extend({
+    totalDays: z.literal(totalDays),
+    steps: z
+      .array(
+        claudeItineraryStepSchema.extend({
+          period,
+          day: z.number().int().min(1).max(totalDays),
+        })
+      )
+      .min(1),
+  });
+}
 
 /**
  * Nombre de propositions présentées à l'utilisateur, par mode.
