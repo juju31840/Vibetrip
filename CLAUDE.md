@@ -744,7 +744,24 @@ sur le filtre de plausibilité) → `lib/prompt.ts` injecte la liste dans le pro
 lieu → le modèle renvoie une **référence** (`ref: "L12"`) par étape → `lib/claude.ts` remplace nom,
 coordonnées et adresse par ceux du socle et marque l'étape vérifiée.
 
-**Résultat mesuré, à scénarios identiques :**
+**Banc d'essai officiel du 27/08/2026 (`npm run eval`, 7 scénarios, 128 étapes) :
+7/7 scénarios sans anomalie, `89 %` d'adresses confirmées contre 52 % avant l'inversion.**
+
+| Scénario | Étapes | Confirmées |
+|---|---|---|
+| Paris · soirée · fauché & calme | 11 | **100 %** |
+| Paris · soirée · large & festif | 12 | 92 % |
+| Lyon · soirée · milieu de gamme | 9 | 89 % |
+| Bordeaux · week-end · calme | 18 | 94 % |
+| Marseille · week-end · festif | 22 | 95 % |
+| Toulouse · voyage · court | 20 | 80 % |
+| Lille · voyage · étendu | 36 | 83 % |
+| **Ensemble** | **128** | **89 %** |
+
+Paris et Lyon, qui mesuraient 0/5 et 0/4 avant, sont désormais au niveau des autres. Le mode
+voyage, tombé à 22 % lors du premier passage avec socle, tient maintenant 80-83 %.
+
+**Mesures intermédiaires, à scénarios identiques :**
 
 | Scénario | Avant | Après |
 |---|---|---|
