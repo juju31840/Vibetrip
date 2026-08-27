@@ -48,6 +48,8 @@ const CHAINES = [
 export interface PlaceCandidate {
   /** Référence courte (« L12 ») que le modèle cite au lieu d'inventer un nom et des coordonnées. */
   ref: string;
+  /** Identifiant réel du lieu en base — sert à compter ce qui a été servi. */
+  id: string;
   name: string;
   location: GeoPoint;
   address: string | null;
@@ -58,6 +60,7 @@ export interface PlaceCandidate {
 
 interface LigneRpc {
   ref: string;
+  fsq_id: string;
   nom: string;
   lat: number;
   lng: number;
@@ -118,6 +121,7 @@ export async function fetchCandidates(options: {
       .slice(0, CANDIDATS_MAX)
       .map((l) => ({
         ref: l.ref,
+        id: l.fsq_id,
         name: l.nom,
         location: { lat: l.lat, lng: l.lng },
         address: l.adresse,
@@ -173,4 +177,30 @@ function normaliser(value: string): string {
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, " ")
     .trim();
+}
+
+/**
+ * Compte les lieux réellement servis à un utilisateur.
+ *
+ * Sans ce compteur, `proposed_count` resterait à zéro et la file de vérification Google
+ * prioriserait au hasard — or son principe est justement de vérifier d'abord ce que les gens
+ * voient. C'est la seule écriture que l'application fait dans le socle, et elle ne touche qu'un
+ * entier : la clé publiable n'a pas le droit d'écrire dans `places`, l'incrément passe donc par
+ * une fonction dédiée.
+ *
+ * Volontairement sans `await` côté appelant : un échec de comptage ne doit jamais retarder ni
+ * faire échouer une génération.
+ */
+export async function notePropositions(ids: string[]): Promise<void> {
+  if (!URL_BASE || !CLE || ids.length === 0) return;
+
+  try {
+    await fetch(`${URL_BASE}/rest/v1/rpc/noter_propositions`, {
+      method: "POST",
+      headers: { apikey: CLE, Authorization: `Bearer ${CLE}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ p_ids: [...new Set(ids)] }),
+    });
+  } catch {
+    // Statistique d'usage : son échec n'a aucune conséquence pour l'utilisateur.
+  }
 }

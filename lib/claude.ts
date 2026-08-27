@@ -4,7 +4,13 @@ import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { claudeItinerarySchema, proposalCountForMode } from "./itinerary-schema";
 import { buildSystemPrompt, buildUserPrompt, PROPOSAL_ANGLES } from "./prompt";
 import { buildMockItineraries } from "./mock-itinerary";
-import { fetchCandidates, resolveCandidate, ecartKm, type PlaceCandidate } from "./places-db";
+import {
+  fetchCandidates,
+  resolveCandidate,
+  ecartKm,
+  notePropositions,
+  type PlaceCandidate,
+} from "./places-db";
 import { geocodeCity } from "./geocode";
 import type { GenerateItineraryRequest, GeoPoint, Itinerary, ItineraryStep } from "@/types/itinerary";
 
@@ -76,14 +82,24 @@ async function generateOne(
 
   // Les identifiants sont attribués ici et non par le modèle : ils doivent être stables et
   // uniques pour servir de clés de sélection et de rendu, ce qu'un texte généré ne garantit pas.
+  const servis: string[] = [];
   const steps: ItineraryStep[] = response.parsed_output.steps.map((step, stepIndex) => {
     const { ref, ...reste } = step;
-    return ancrer(
-      { id: `p${index + 1}-step-${stepIndex + 1}`, ...reste },
-      ref,
-      candidates
-    );
+    const base: ItineraryStep = { id: `p${index + 1}-step-${stepIndex + 1}`, ...reste };
+    const candidat = choisirCandidat(base, ref, candidates);
+    if (!candidat) return base;
+    servis.push(candidat.id);
+    return {
+      ...base,
+      placeName: candidat.name,
+      location: candidat.location,
+      address: candidat.address,
+      verified: true,
+    };
   });
+
+  // Sans attendre : c'est une statistique d'usage, elle ne doit pas retarder la proposition.
+  void notePropositions(servis);
 
   return { ...response.parsed_output, id: `proposal-${index + 1}`, steps };
 }
@@ -111,7 +127,7 @@ async function candidatesFor(
 }
 
 /**
- * Remplace ce que le modèle a écrit par les données réelles du lieu qu'il a choisi.
+ * Le lieu réel derrière ce que le modèle a écrit, ou `null` s'il n'a pas choisi dans la liste.
  *
  * C'est ici que l'inversion produit son effet : le nom, la coordonnée et l'adresse ne viennent
  * plus du modèle mais du socle, et l'étape est marquée vérifiée sans avoir à interroger qui que
@@ -122,22 +138,15 @@ async function candidatesFor(
  * décrit l'étape. Et si la coordonnée qu'il a écrite s'éloigne trop de celle du lieu cité, on ne
  * substitue pas — il parlait probablement d'autre chose.
  */
-function ancrer(
+function choisirCandidat(
   step: ItineraryStep,
   ref: string | null | undefined,
   candidates: PlaceCandidate[]
-): ItineraryStep {
+): PlaceCandidate | null {
   const candidat = resolveCandidate(ref, step.placeName, candidates);
-  if (!candidat) return step;
-  if (ecartKm(candidat, step.location) > ECART_MAX_KM) return step;
-
-  return {
-    ...step,
-    placeName: candidat.name,
-    location: candidat.location,
-    address: candidat.address,
-    verified: true,
-  };
+  if (!candidat) return null;
+  if (ecartKm(candidat, step.location) > ECART_MAX_KM) return null;
+  return candidat;
 }
 
 /**
