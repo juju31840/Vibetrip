@@ -852,6 +852,52 @@ départ. Lille passe de 22 % à 77 %.
   soupçonner la requête ; le crédit Anthropic était épuisé. C'est écrit dans les notes du projet
   depuis le 25/08, et je l'ai quand même cherché ailleurs.
 
+### La chaîne de fiabilité est complète (27/08/2026, soir)
+
+Trois étages, chacun répondant à une question que les autres ne savent pas traiter :
+
+1. **Foursquare** dit qu'un lieu **a existé** et où — 575 206 lieux, chargés une fois.
+2. **Le modèle** compose parmi eux et **juge** lesquels valent le détour. Il ne produit plus
+   aucun fait.
+3. **Google Places** dit qu'un lieu **existe encore aujourd'hui** — `npm run verify:google`, ou le
+   cron `/api/cron/verify-places` chaque nuit sur 150 lieux.
+
+Dix fermetures détectées sur les 92 premiers lieux vérifiés, dont **« Autour d'Un Verre » à
+Lyon** — un lieu que le socle proposait encore dans un itinéraire une heure plus tôt. Vérifié :
+un lieu marqué `closed` disparaît immédiatement de la génération **et** du panneau « Changer ».
+
+**Deux réglages propres à Google, différents de ceux de Mapbox** :
+- **Cinq candidats, pas un** — « Place Gambetta » et « Théâtre du Capitole » étaient déclarés
+  introuvables, le moteur les classant deuxième. La leçon était déjà écrite pour Mapbox.
+- **Un verrou de proximité en plus du verrou de noms.** `place-match` est calibré contre
+  « Le Baron » / « Le Baron Rouge » ; Google met la raison sociale entière dans le nom
+  (« Horace » y devient « HORACE café.cuisine.canons »), ce qui rejetait 62 % de lieux réels.
+  Sous 60 m, la géographie lève l'ambiguïté que le nom ne lève pas — sans laisser passer une
+  reprise sous autre enseigne (« Codebar » devenu « Buster », à 8 m : rejeté).
+
+### Surface area check — enfin fait
+
+Le panneau « Changer » empilait **deux sources d'alternatives**. « Dans les autres idées » (les
+étapes des autres propositions) datait d'avant la recherche par thème et ne rendait souvent qu'un
+candidat par créneau — c'est précisément ce qui avait motivé la seconde. Le socle en rend huit à
+douze, tous réels, sans chaînes ni lieux fermés. Section supprimée, `lib/alternatives.ts` avec
+elle, et la prop `allProposals` qui traversait deux niveaux de composants.
+
+### Prêt à déployer, pas encore déployé
+
+`vercel.json`, la route de cron et le quota persistant sont en place ; la procédure est dans
+`DEPLOIEMENT.md`. Restent la connexion au compte et la déclaration des secrets, qui demandent un
+navigateur.
+
+**Le quota est passé en base, et ce n'était pas un raffinement** : en mémoire de processus, chaque
+instance froide serverless repart avec un compteur neuf — soit aucune limite dès que
+l'application est publique. Sur un poste de développement la faiblesse restait théorique ;
+exposée avec une clé API derrière, elle offrait le crédit au premier venu.
+
+**Ce que le déploiement débloque, au-delà de la mise en ligne** : la **géolocalisation**, qui
+exige un contexte sécurisé et était donc *impossible* en HTTP sur le réseau local — les testeurs
+saisissaient forcément leur ville à la main.
+
 ### Reste à faire
 
 - **Inverser le pipeline** : composer parmi des candidats réels de la base au lieu d'inventer puis
