@@ -1,6 +1,8 @@
 "use client";
 
 import clsx from "clsx";
+import { CheckIcon, PinIcon } from "@/components/ui/icons";
+import { buildMapsUrl } from "@/lib/maps";
 import type { ItineraryStep } from "@/types/itinerary";
 
 const PERIOD_LABELS: Record<ItineraryStep["period"], string> = {
@@ -12,35 +14,102 @@ const PERIOD_LABELS: Record<ItineraryStep["period"], string> = {
 interface StepCardProps {
   step: ItineraryStep;
   isActive: boolean;
+  isDone: boolean;
   onSelect: (stepId: string) => void;
+  onToggleDone: (stepId: string) => void;
 }
 
-export function StepCard({ step, isActive, onSelect }: StepCardProps) {
+/**
+ * Une étape se lit comme une ligne de programme d'affiche : un filet au-dessus, le créneau en
+ * petites capitales, le nom en grasse condensée. Plus de carte blanche arrondie — c'était l'un
+ * des trois traits qui faisaient reconnaître l'interface comme générée.
+ */
+export function StepCard({ step, isActive, isDone, onSelect, onToggleDone }: StepCardProps) {
   return (
-    <button
-      type="button"
-      onClick={() => onSelect(step.id)}
+    <div
       className={clsx(
-        "flex w-full flex-col gap-1 rounded-2xl border px-4 py-3 text-left transition-colors",
-        isActive
-          ? "border-transparent bg-brand-gradient [text-shadow:0_1px_2px_rgba(0,0,0,0.45)]"
-          : "border-border bg-surface"
+        "flex gap-3 border-t-2 border-ink px-1 py-3 transition-colors",
+        isActive && "bg-paper-2"
       )}
     >
-      <span
+      {/* Hook de rétention : cocher une étape sur place donne une raison de rouvrir l'app
+          pendant la sortie, et pas seulement au moment de la générer. Elle alimente aussi la
+          carte personnelle (lib/places-store.ts), qui est la contrepartie du geste. */}
+      <button
+        type="button"
+        onClick={() => onToggleDone(step.id)}
+        aria-pressed={isDone}
+        aria-label={isDone ? "Marquer comme non fait" : "J'y suis allé"}
         className={clsx(
-          "text-xs uppercase tracking-wide",
-          isActive ? "text-text-primary/90" : "text-text-secondary"
+          "mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center border-2 border-ink transition-colors",
+          isDone ? "bg-blue text-paper" : "bg-transparent text-transparent hover:bg-paper-3"
         )}
       >
-        {PERIOD_LABELS[step.period]}
-      </span>
-      <span className="text-base font-semibold text-text-primary">{step.placeName}</span>
-      <span
-        className={clsx("text-sm", isActive ? "text-text-primary/90" : "text-text-secondary")}
+        <CheckIcon className="h-3.5 w-3.5" />
+      </button>
+
+      <button
+        type="button"
+        onClick={() => onSelect(step.id)}
+        className="flex min-w-0 flex-1 flex-col text-left"
       >
-        {step.description}
+        <span className="text-overline uppercase text-ink-soft">{PERIOD_LABELS[step.period]}</span>
+        <span
+          className={clsx(
+            "mt-0.5 font-display text-[1.35rem] uppercase leading-[1.04] tracking-[-0.01em]",
+            isDone ? "text-ink-mute line-through decoration-2" : "text-ink"
+          )}
+        >
+          {step.placeName}
+        </span>
+        <span className="mt-1 text-body text-ink-soft">{step.description}</span>
+        <VerificationNote step={step} />
+      </button>
+
+      {/* Fermeture de la boucle : l'utilisateur se rend réellement sur place. Ouvert dans un
+          nouvel onglet pour ne pas quitter l'itinéraire en cours de sortie. */}
+      <a
+        href={buildMapsUrl(step)}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="mt-0.5 flex h-8 shrink-0 items-center gap-1.5 self-start border-2 border-ink px-2.5 text-[0.6875rem] font-bold uppercase tracking-[0.08em] text-ink transition-colors hover:bg-ink hover:text-paper"
+      >
+        <PinIcon className="h-3.5 w-3.5" />
+        Y aller
+      </a>
+    </div>
+  );
+}
+
+/**
+ * L'accent est mis sur ce qui EST confirmé, et le doute est formulé comme un conseil de prudence
+ * plutôt que comme une erreur. C'est un choix de conception, pas une coquetterie : environ la
+ * moitié des étapes ne sont pas confirmées (beaucoup sont pourtant réelles mais absentes du
+ * référentiel), et les signaler toutes en rouge ferait passer un produit qui fonctionne pour un
+ * produit cassé.
+ *
+ * En direction « Riso » cela se traduit ainsi : l'adresse confirmée prend l'encre bleue, la
+ * mention de prudence ne prend **aucune encre** — capitales grises soulignées d'un pointillé.
+ * Le vermillon reste réservé à l'action ; l'employer ici crierait à l'erreur.
+ *
+ * Quand la vérification n'a pas pu avoir lieu (`null`), on n'affiche rien : prétendre un doute
+ * qu'on n'a pas mesuré serait aussi trompeur que prétendre une certitude.
+ */
+function VerificationNote({ step }: { step: ItineraryStep }) {
+  if (step.verified === null || step.verified === undefined) return null;
+
+  if (step.verified) {
+    return (
+      <span className="mt-1.5 inline-flex items-center gap-1.5 text-[0.6875rem] font-bold uppercase tracking-[0.08em] text-blue">
+        <CheckIcon className="h-3 w-3" />
+        {step.address ?? "Adresse confirmée"}
       </span>
-    </button>
+    );
+  }
+
+  return (
+    <span className="mt-1.5 w-fit border-b border-dotted border-ink-mute pb-0.5 text-[0.6875rem] font-bold uppercase tracking-[0.08em] text-ink-mute">
+      Adresse à confirmer sur place
+    </span>
   );
 }

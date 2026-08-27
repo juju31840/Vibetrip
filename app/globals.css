@@ -3,10 +3,89 @@
 @tailwind utilities;
 
 :root {
-  color-scheme: dark;
+  color-scheme: light;
 }
 
 html,
 body {
-  background-color: #0b0b12;
+  background-color: #e7e5df;
+}
+
+/*
+ * Trame d'impression. C'est elle qui fait lire le fond comme du papier plutôt que comme un aplat
+ * numérique — la direction « Riso » repose autant sur ce grain que sur ses deux encres.
+ * Appliquée aussi aux panneaux opaques (bottom sheet, barre d'onglets) : un panneau lisse posé
+ * sur un fond tramé se verrait comme un rectangle rapporté.
+ */
+.grain {
+  background-color: #e7e5df;
+  background-image: radial-gradient(rgba(23, 22, 26, 0.13) 0.6px, transparent 0.7px);
+  background-size: 4px 4px;
+}
+
+body {
+  background-image: radial-gradient(rgba(23, 22, 26, 0.13) 0.6px, transparent 0.7px);
+  background-size: 4px 4px;
+}
+
+/*
+ * Curseurs : `accent-color` seul ne permet pas de dissocier la piste remplie du reste, et le
+ * rendu natif diverge fortement entre navigateurs. La piste est peinte en dégradé calculé
+ * (components/ui/Slider.tsx) ; ici la poignée, **carrée et cernée de noir** comme le reste du
+ * système — un curseur rond réintroduirait à lui seul le vocabulaire qu'on vient d'abandonner.
+ */
+input[type="range"].vibe-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 10px;
+  border-radius: 0;
+  outline: none;
+  border: 2px solid #17161a;
+}
+
+input[type="range"].vibe-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 0;
+  background: #e7e5df;
+  border: 2px solid #17161a;
+  cursor: pointer;
+}
+
+input[type="range"].vibe-slider::-moz-range-thumb {
+  width: 22px;
+  height: 22px;
+  border-radius: 0;
+  background: #e7e5df;
+  border: 2px solid #17161a;
+  cursor: pointer;
+}
+
+/*
+ * Apparition de la confirmation (components/ui/Toast.tsx). Le mouvement est court et vertical :
+ * il attire l'œil vers un message qui n'était pas là, sans donner l'impression que l'écran bouge.
+ */
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(0.75rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-toast-in {
+  animation: toast-in 180ms ease-out;
+}
+
+/* Certains utilisateurs désactivent les animations au niveau du système — souvent parce que le
+   mouvement leur est pénible. On respecte ce réglage plutôt que de l'ignorer. */
+@media (prefers-reduced-motion: reduce) {
+  .animate-toast-in {
+    animation: none;
+  }
 }

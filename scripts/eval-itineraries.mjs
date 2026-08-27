@@ -49,7 +49,7 @@ const PLACE_TYPES = new Set([
 const PLAUSIBILITY_RADIUS_KM = {
   tonight: { min: 5, max: 30 },
   weekend: { min: 15, max: 50 },
-  trip: { min: 100, max: 400 },
+  trip: { min: 40, max: 180 },
 };
 
 /** Scénarios choisis pour couvrir les 3 modes, les extrêmes de curseurs, GPS et ville texte. */
@@ -128,6 +128,35 @@ function checkContract(itinerary, scenario, origin) {
   return problems;
 }
 
+/**
+ * Lit le flux NDJSON de la route (`GenerationEvent` dans types/itinerary.ts). Le banc attendait
+ * auparavant une réponse JSON unique portant `itinerary` : il a cessé de fonctionner le jour où
+ * la génération est passée en livraison progressive, et le jour, avant, où elle est passée à
+ * plusieurs propositions.
+ */
+async function readStream(res) {
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  const proposals = [];
+  let buffer = "";
+  let error = null;
+
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split("\n");
+    buffer = lines.pop() ?? "";
+    for (const line of lines) {
+      if (!line.trim()) continue;
+      const event = JSON.parse(line);
+      if (event.type === "proposal") proposals.push(event.itinerary);
+      else if (event.type === "error") error = event.error;
+    }
+  }
+  return { proposals, error };
+}
+
 function renderScenario(scenario, result) {
   const lines = [`## ${scenario.label}`, ""];
   lines.push(
@@ -140,29 +169,41 @@ function renderScenario(scenario, result) {
     return lines.join("\n");
   }
 
-  const it = result.itinerary;
-  lines.push(`**${it.tripName}** — ${it.totalDays} jour(s), ${it.steps.length} étapes`, "");
-
-  if (result.problems.length) {
-    lines.push("**Anomalies de contrat :**", ...result.problems.map((p) => `- ${p}`), "");
-  } else {
-    lines.push("Contrat respecté (jours, périodes, types, distances).", "");
-  }
-
-  let currentDay = null;
-  for (const step of it.steps) {
-    if (step.day !== currentDay) {
-      currentDay = step.day;
-      lines.push(`### Jour ${currentDay}`, "");
-    }
-    const period = { morning: "Matin", midday: "Midi", evening: "Soir" }[step.period] ?? step.period;
+  for (const [index, { itinerary: it, problems }] of result.proposals.entries()) {
+    const confirmed = it.steps.filter((step) => step.verified === true).length;
     lines.push(
-      `- **${period} — ${step.placeName}** *(${step.type})*  `,
-      `  ${step.description}  `,
-      `  \`${step.location.lat.toFixed(4)}, ${step.location.lng.toFixed(4)}\``
+      `### Proposition ${index + 1} — ${it.tripName}`,
+      "",
+      `${it.summary}`,
+      "",
+      `${it.totalDays} jour(s), ${it.steps.length} étapes, ${confirmed} adresse(s) confirmée(s)`,
+      ""
     );
+
+    if (problems.length) {
+      lines.push("**Anomalies de contrat :**", ...problems.map((p) => `- ${p}`), "");
+    } else {
+      lines.push("Contrat respecté (jours, périodes, types, distances).", "");
+    }
+
+    let currentDay = null;
+    for (const step of it.steps) {
+      if (step.day !== currentDay) {
+        currentDay = step.day;
+        lines.push(`#### Jour ${currentDay}`, "");
+      }
+      const period = { morning: "Matin", midday: "Midi", evening: "Soir" }[step.period] ?? step.period;
+      // Le statut de vérification est reporté : c'est lui qu'on relit pour juger si un
+      // resserrage des verrous a fait chuter le taux de confirmation (lib/place-match.ts).
+      const mark = step.verified === true ? " ✓" : step.verified === false ? " (à confirmer)" : "";
+      lines.push(
+        `- **${period} — ${step.placeName}**${mark} *(${step.type})*  `,
+        `  ${step.description}  `,
+        `  \`${step.location.lat.toFixed(4)}, ${step.location.lng.toFixed(4)}\``
+      );
+    }
+    lines.push("");
   }
-  lines.push("");
   return lines.join("\n");
 }
 
@@ -202,16 +243,29 @@ async function run() {
         headers: { "Content-Type": "application/json", "X-Forwarded-For": `10.0.0.${index + 1}` },
         body: JSON.stringify(scenario),
       });
-      const body = await res.json();
-      result = res.ok
-        ? { itinerary: body.itinerary, problems: checkContract(body.itinerary, scenario, origin) }
-        : { status: res.status, error: body.error ?? { code: "?", message: "réponse illisible" } };
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        result = { status: res.status, error: body.error ?? { code: "?", message: "réponse illisible" } };
+      } else {
+        const { proposals, error } = await readStream(res);
+        result = proposals.length
+          ? {
+              proposals: proposals.map((itinerary) => ({
+                itinerary,
+                problems: checkContract(itinerary, scenario, origin),
+              })),
+            }
+          : { status: res.status, error: error ?? { code: "EMPTY", message: "aucune proposition" } };
+      }
     } catch (error) {
       result = { status: 0, error: { code: "NETWORK", message: String(error) } };
     }
 
     process.stderr.write(
-      result.error ? "échec\n" : `ok (${result.problems.length} anomalie(s))\n`
+      result.error
+        ? "échec\n"
+        : `ok (${result.proposals.length} proposition(s), ` +
+          `${result.proposals.reduce((n, p) => n + p.problems.length, 0)} anomalie(s))\n`
     );
     sections.push(renderScenario(scenario, result));
   }

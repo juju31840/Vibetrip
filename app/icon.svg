@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- Aux encres du système : papier journal, vermillon, outremer, noir d'impression.
+       Un point de départ et un point d'arrivée reliés — l'objet même du produit. -->
+  <rect width="64" height="64" fill="#E7E5DF"/>
+  <rect x="3" y="3" width="58" height="58" fill="none" stroke="#17161A" stroke-width="5"/>
+  <path d="M18 44 L46 20" stroke="#17161A" stroke-width="5" stroke-linecap="round"/>
+  <circle cx="18" cy="44" r="8" fill="#DD3B2E" stroke="#17161A" stroke-width="4"/>
+  <circle cx="46" cy="20" r="8" fill="#2B44A8" stroke="#17161A" stroke-width="4"/>
+</svg>

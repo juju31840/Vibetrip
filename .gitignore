@@ -24,3 +24,11 @@ next-env.d.ts
 
 # workspace VS Code (chemins locaux, machine-spécifique)
 *.code-workspace
+
+# artefacts de vérification (générés, non versionnés)
+/rapport.md
+/.playwright-mcp/
+design-canvas/
+
+# réglages locaux : contient des jetons d'accès, jamais versionné
+.claude/settings.local.json

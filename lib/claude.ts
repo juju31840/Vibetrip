@@ -1,49 +1,71 @@
 import "server-only";
 import Anthropic from "@anthropic-ai/sdk";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
-import { claudeItinerarySchema } from "./itinerary-schema";
-import { buildSystemPrompt, buildUserPrompt } from "./prompt";
-import { buildMockItinerary } from "./mock-itinerary";
-import type { GenerateItineraryRequest, Itinerary, ItineraryStep } from "@/types/itinerary";
+import { claudeItinerarySchema, proposalCountForMode } from "./itinerary-schema";
+import { buildSystemPrompt, buildUserPrompt, PROPOSAL_ANGLES } from "./prompt";
+import { buildMockItineraries } from "./mock-itinerary";
+import { fetchCandidates, resolveCandidate, ecartKm, type PlaceCandidate } from "./places-db";
+import { geocodeCity } from "./geocode";
+import type { GenerateItineraryRequest, GeoPoint, Itinerary, ItineraryStep } from "@/types/itinerary";
 
 const client = new Anthropic();
 
-const MODEL = "claude-sonnet-5";
-const MAX_TOKENS = 4096;
+/**
+ * Surchargeable par `VIBETRIP_MODEL` pour comparer deux modèles à code identique — c'est ainsi
+ * qu'a été mesuré l'écart entre Sonnet et Haiku (voir « Latence » dans CLAUDE.md). En l'absence
+ * de la variable, le modèle par défaut du produit.
+ */
+const MODEL = process.env.VIBETRIP_MODEL ?? "claude-sonnet-5";
+const MAX_TOKENS = 6000;
 
 export class ItineraryParseError extends Error {}
 
-async function requestItinerary(request: GenerateItineraryRequest, retry: boolean) {
+/**
+ * Écart maximal toléré entre la coordonnée écrite par le modèle et celle du lieu réel qu'il dit
+ * avoir choisi. Au-delà, on considère qu'il parlait d'autre chose et on ne substitue pas : mieux
+ * vaut une étape à confirmer qu'une fausse certitude sur un lieu qui n'est pas celui décrit.
+ */
+const ECART_MAX_KM = 2;
+
+async function requestItinerary(
+  request: GenerateItineraryRequest,
+  angle: string,
+  retry: boolean,
+  candidates: PlaceCandidate[]
+) {
   const systemPrompt = retry
-    ? `${buildSystemPrompt()} Ta réponse précédente n'était pas un JSON valide conforme au schéma attendu. Corrige-la et renvoie uniquement le JSON demandé, sans aucun texte autour.`
-    : buildSystemPrompt();
+    ? `${buildSystemPrompt(angle)} Ta réponse précédente n'était pas un JSON valide conforme au schéma attendu. Corrige-la et renvoie uniquement le JSON demandé, sans aucun texte autour.`
+    : buildSystemPrompt(angle);
 
   return client.messages.parse({
     model: MODEL,
     max_tokens: MAX_TOKENS,
     system: systemPrompt,
     output_config: { format: zodOutputFormat(claudeItinerarySchema) },
-    messages: [{ role: "user", content: buildUserPrompt(request) }],
+    messages: [{ role: "user", content: buildUserPrompt(request, candidates) }],
   });
 }
 
 /**
- * Génère un itinéraire via Claude en structured output (schéma Zod contraint côté API).
+ * Génère plusieurs propositions d'itinéraire via Claude en structured output (schéma Zod contraint côté API).
  * Une erreur de parsing déclenche une unique tentative de retry avant d'abandonner.
  * Les erreurs de l'API Anthropic (rate limit, indisponibilité, etc.) remontent telles
  * quelles pour que l'appelant les distingue via `instanceof Anthropic.APIError`.
  */
-export async function generateItinerary(request: GenerateItineraryRequest): Promise<Itinerary> {
-  // Mock de développement (VIBETRIP_MOCK=1) : évite de consommer du crédit API pour
-  // itérer sur la carte et la bottom sheet. Voir lib/mock-itinerary.ts.
-  if (process.env.VIBETRIP_MOCK === "1") {
-    return buildMockItinerary(request);
-  }
+async function generateOne(
+  request: GenerateItineraryRequest,
+  angle: string,
+  index: number,
+  origin: Promise<GeoPoint | null>
+): Promise<Itinerary> {
+  // Le socle d'abord : le modèle compose parmi des lieux qui existent au lieu d'en inventer.
+  // Une graine par proposition, sinon les trois angles piochent exactement les mêmes adresses.
+  const candidates = await candidatesFor(request, index, origin);
 
-  let response = await requestItinerary(request, false);
+  let response = await requestItinerary(request, angle, false, candidates);
 
   if (!response.parsed_output) {
-    response = await requestItinerary(request, true);
+    response = await requestItinerary(request, angle, true, candidates);
   }
 
   if (!response.parsed_output) {
@@ -52,11 +74,113 @@ export async function generateItinerary(request: GenerateItineraryRequest): Prom
     );
   }
 
-  const parsed = response.parsed_output;
-  const steps: ItineraryStep[] = parsed.steps.map((step, index) => ({
-    id: `step-${index + 1}`,
-    ...step,
-  }));
+  // Les identifiants sont attribués ici et non par le modèle : ils doivent être stables et
+  // uniques pour servir de clés de sélection et de rendu, ce qu'un texte généré ne garantit pas.
+  const steps: ItineraryStep[] = response.parsed_output.steps.map((step, stepIndex) => {
+    const { ref, ...reste } = step;
+    return ancrer(
+      { id: `p${index + 1}-step-${stepIndex + 1}`, ...reste },
+      ref,
+      candidates
+    );
+  });
 
-  return { ...parsed, steps };
+  return { ...response.parsed_output, id: `proposal-${index + 1}`, steps };
+}
+
+async function candidatesFor(
+  request: GenerateItineraryRequest,
+  index: number,
+  originPromise: Promise<GeoPoint | null>
+): Promise<PlaceCandidate[]> {
+  // Le socle s'interroge par proximité : il lui faut un point, et la ville saisie en toutes
+  // lettres doit donc être géocodée **avant** la génération et non pendant, contrairement au
+  // filtre de plausibilité. C'est le cas le plus fréquent en pratique — la géolocalisation du
+  // navigateur exige un contexte sécurisé, donc elle est indisponible dès qu'on teste sur un
+  // téléphone en réseau local. Sans socle utilisable ici, il ne servirait presque jamais.
+  const origin = await originPromise;
+  if (!origin) return [];
+
+  return fetchCandidates({
+    origin,
+    mode: request.mode,
+    distance: request.distance,
+    themes: request.themes,
+    seed: `p${index + 1}`,
+  });
+}
+
+/**
+ * Remplace ce que le modèle a écrit par les données réelles du lieu qu'il a choisi.
+ *
+ * C'est ici que l'inversion produit son effet : le nom, la coordonnée et l'adresse ne viennent
+ * plus du modèle mais du socle, et l'étape est marquée vérifiée sans avoir à interroger qui que
+ * ce soit. Une étape ancrée ne peut plus être un lieu inventé.
+ *
+ * Deux garde-fous. Le modèle garde **son** `type` : le socle classe « Boulangerie Pozzoli » en
+ * restaurant, mais si le modèle l'a mise en café pour un petit-déjeuner, c'est son jugement qui
+ * décrit l'étape. Et si la coordonnée qu'il a écrite s'éloigne trop de celle du lieu cité, on ne
+ * substitue pas — il parlait probablement d'autre chose.
+ */
+function ancrer(
+  step: ItineraryStep,
+  ref: string | null | undefined,
+  candidates: PlaceCandidate[]
+): ItineraryStep {
+  const candidat = resolveCandidate(ref, step.placeName, candidates);
+  if (!candidat) return step;
+  if (ecartKm(candidat, step.location) > ECART_MAX_KM) return step;
+
+  return {
+    ...step,
+    placeName: candidat.name,
+    location: candidat.location,
+    address: candidat.address,
+    verified: true,
+  };
+}
+
+/**
+ * Lance les propositions **en parallèle** — un appel par angle — et rend la liste des promesses
+ * *sans les attendre*.
+ *
+ * C'est le point important : la fonction rendait autrefois `Promise<Itinerary[]>`, donc la route
+ * ne pouvait rien livrer avant la fin de la génération la plus lente. Rendre les promesses telles
+ * quelles laisse l'appelant émettre chaque proposition dès qu'elle arrive. Sur une soirée, la
+ * première tombe vers 5-6 s au lieu de 9-11 s pour l'ensemble.
+ *
+ * Un seul appel produisant les trois itinéraires avait d'abord été essayé : bonnes propositions,
+ * mais 2 min 10 sur un week-end — au-delà de la limite d'exécution de la plateforme.
+ *
+ * Aucune promesse n'est rejetée collectivement : l'appelant traite chacune séparément, pour
+ * qu'une proposition en échec n'emporte pas les autres.
+ */
+export function generateProposals(request: GenerateItineraryRequest): Promise<Itinerary>[] {
+  // Mock de développement (VIBETRIP_MOCK=1) : évite de consommer du crédit API pour itérer
+  // sur l'interface. L'échelonnement est délibéré — un mock instantané ne ferait jamais passer
+  // l'écran par son état d'attente partielle, qui est précisément ce qu'on veut pouvoir régler.
+  if (process.env.VIBETRIP_MOCK === "1") {
+    const mocks = buildMockItineraries(request);
+    return Array.from(
+      { length: proposalCountForMode(request.mode) },
+      (_, index) =>
+        new Promise<Itinerary>((resolve, reject) => {
+          setTimeout(() => {
+            mocks.then((itineraries) => resolve(itineraries[index]!)).catch(reject);
+          }, 700 * (index + 1));
+        })
+    );
+  }
+
+  // Résolu une seule fois et partagé : géocoder la même ville trois fois serait trois fois le
+  // même aller-retour. La promesse est passée sans être attendue, pour ne pas retarder le
+  // démarrage des générations dont le point est déjà connu.
+  const origin: Promise<GeoPoint | null> =
+    "lat" in request.location
+      ? Promise.resolve(request.location)
+      : geocodeCity(request.location.city);
+
+  return PROPOSAL_ANGLES.slice(0, proposalCountForMode(request.mode)).map((angle, index) =>
+    generateOne(request, angle, index, origin)
+  );
 }

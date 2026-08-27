@@ -1,6 +1,7 @@
 import "server-only";
 import { geocodeCity } from "./geocode";
 import { totalDaysForMode } from "./prompt";
+import { proposalCountForMode } from "./itinerary-schema";
 import type { GenerateItineraryRequest, Itinerary, ItineraryStep, Period, PlaceType } from "@/types/itinerary";
 
 /**
@@ -55,7 +56,10 @@ function offsetPoint(origin: { lat: number; lng: number }, km: number, angleRad:
   return { lat: origin.lat + dLat, lng: origin.lng + dLng };
 }
 
-export async function buildMockItinerary(request: GenerateItineraryRequest): Promise<Itinerary> {
+async function buildMockItinerary(
+  request: GenerateItineraryRequest,
+  variant: number
+): Promise<Itinerary> {
   const { mode, location, distance } = request;
 
   const origin =
@@ -69,10 +73,13 @@ export async function buildMockItinerary(request: GenerateItineraryRequest): Pro
   for (let day = 1; day <= totalDays; day += 1) {
     periods.forEach((period, indexInDay) => {
       const globalIndex = steps.length;
-      const place = PLACES_BY_PERIOD[period][(day - 1 + indexInDay) % PLACES_BY_PERIOD[period].length]!;
+      const place =
+        PLACES_BY_PERIOD[period][
+          (day - 1 + indexInDay + variant) % PLACES_BY_PERIOD[period].length
+        ]!;
       const spread = SPREAD_KM[mode] * (0.3 + 0.7 * ((globalIndex % 4) / 3));
       steps.push({
-        id: `step-${globalIndex + 1}`,
+        id: `p${variant + 1}-step-${globalIndex + 1}`,
         day,
         period,
         placeName: mode === "tonight" ? place.placeName : `${place.placeName} — jour ${day}`,
@@ -85,9 +92,32 @@ export async function buildMockItinerary(request: GenerateItineraryRequest): Pro
 
   const label = "city" in location ? location.city : "ta position";
   return {
-    tripName: `[MOCK] Escapade autour de ${label}`,
+    id: `proposal-${variant + 1}`,
+    tripName: `[MOCK] Escapade ${MOCK_ANGLES[variant]?.name ?? variant + 1} autour de ${label}`,
+    summary: MOCK_ANGLES[variant]?.summary ?? "Variante de démonstration.",
     mode,
     totalDays,
     steps,
   };
+}
+
+const MOCK_ANGLES = [
+  { name: "classique", summary: "Les incontournables, sans détour." },
+  { name: "gourmande", summary: "Centrée sur la table et les bonnes adresses." },
+  { name: "buissonnière", summary: "À l'écart du centre, plus confidentielle." },
+];
+
+/**
+ * Le mock renvoie autant de propositions que la vraie génération, et volontairement décalées
+ * les unes des autres : une interface de choix testée sur trois itinéraires identiques ne
+ * révélerait aucun des problèmes de lisibilité qu'elle doit justement faire apparaître.
+ */
+export async function buildMockItineraries(
+  request: GenerateItineraryRequest
+): Promise<Itinerary[]> {
+  return Promise.all(
+    Array.from({ length: proposalCountForMode(request.mode) }, (_, variant) =>
+      buildMockItinerary(request, variant)
+    )
+  );
 }
