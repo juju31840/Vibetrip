@@ -124,11 +124,14 @@ function describeCandidates(candidates: PlaceCandidate[]): string | null {
 
   const lignes = candidates.map((c) => {
     const adresse = c.address ? `, ${c.address}` : "";
-    return `${c.ref} | ${c.name}${adresse} | ${c.type} | ${c.location.lat.toFixed(5)},${c.location.lng.toFixed(5)}`;
+    // La commune est portée explicitement : sur un voyage, le vivier couvre des dizaines de
+    // villes, et sans elle le modèle ne peut pas construire un séjour qui se déplace.
+    const commune = c.city ? ` (${c.city})` : "";
+    return `${c.ref} | ${c.name}${adresse}${commune} | ${c.type} | ${c.location.lat.toFixed(5)},${c.location.lng.toFixed(5)}`;
   });
 
   return [
-    `Lieux vérifiés disponibles autour du point de départ (${candidates.length}) — format : ref | nom, adresse | type | lat,lng`,
+    `Lieux vérifiés disponibles autour du point de départ (${candidates.length}) — format : ref | nom, adresse (commune) | type | lat,lng`,
     ...lignes,
     "Compose l'itinéraire avec ces lieux. Pour chaque étape : ref = la référence, placeName = le nom exact, location = les coordonnées telles quelles.",
   ].join("\n");
@@ -150,9 +153,13 @@ export function buildUserPrompt(
     `Il doit durer exactement ${totalDays} jour(s) : totalDays doit valoir ${totalDays}, et chaque étape doit avoir un champ day compris entre 1 et ${totalDays}.`,
     `Point de départ : ${describeLocation(location)}.`,
     `Budget souhaité (0-100=${budget}) : ${budgetLabel}.`,
+    budget <= 50
+      ? "Le budget est une contrainte, pas une indication : n'y place aucune table gastronomique ni aucun établissement réputé cher. Un restaurant étoilé proposé à quelqu'un qui a coché « serré » rend tout l'itinéraire inutilisable."
+      : null,
     `Ambiance souhaitée (0-100=${ambiance}) : ${ambianceLabel}.`,
     `Distance souhaitée (0-100=${distance}). ${DISTANCE_HINTS[mode]}`,
     "Structure les étapes par jour (day, à partir de 1) et par période (morning/midday/evening), avec au moins une étape par période pertinente.",
+    "Tiens compte des heures d'ouverture habituelles : un musée, une boutique ou un marché n'ont pas leur place en soirée, un club ni un bar de nuit n'ont pas leur place le matin. Une étape fermée à l'heure où l'on s'y présente est une étape perdue.",
     "Choisis un type (`type`) cohérent pour chaque étape parmi la liste imposée par le schéma.",
     describeThemes(themes),
     describeCandidates(candidates),

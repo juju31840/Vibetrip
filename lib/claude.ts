@@ -64,7 +64,11 @@ async function requestItinerary(
     // impossible à enfreindre.
     output_config: {
       format: zodOutputFormat(
-        claudeItinerarySchemaFor(request.mode, totalDaysForMode(request.mode, request.distance))
+        claudeItinerarySchemaFor(
+          request.mode,
+          totalDaysForMode(request.mode, request.distance),
+          candidates.map((c) => c.ref)
+        )
       ),
     },
     messages: [{ role: "user", content: buildUserPrompt(request, candidates) }],
@@ -162,10 +166,17 @@ function choisirCandidat(
   ref: string | null | undefined,
   candidates: PlaceCandidate[]
 ): PlaceCandidate | null {
-  const candidat = resolveCandidate(ref, step.placeName, candidates);
-  if (!candidat) return null;
-  if (ecartKm(candidat, step.location) > ECART_MAX_KM) return null;
-  return candidat;
+  const trouve = resolveCandidate(ref, step.placeName, candidates);
+  if (!trouve) return null;
+
+  // Une référence citée est un choix explicite, et le schéma ne permet d'en citer que de
+  // valides : on ne la refuse pas parce que les coordonnées recopiées sont approximatives.
+  // C'est ce contrôle qui rejetait la moitié des étapes d'un voyage — sur 150 km de rayon, le
+  // modèle recopie mal, et l'étape retombait sur ses propres coordonnées, non vérifiées.
+  // Le contrôle de distance ne garde son sens que pour le rattrapage par le nom, où
+  // l'homonymie est réelle (« Le Baron » désigne deux établissements à Paris).
+  if (!trouve.parRef && ecartKm(trouve.candidat, step.location) > ECART_MAX_KM) return null;
+  return trouve.candidat;
 }
 
 /**

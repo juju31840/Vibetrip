@@ -75,19 +75,37 @@ export const claudeItinerarySchema = itinerarySchema.omit({ id: true }).extend({
  * `totalDays` est borné de la même façon, pour la même raison : le nombre de jours est décidé par
  * `totalDaysForMode`, pas par le modèle.
  */
-export function claudeItinerarySchemaFor(mode: TripMode, totalDays: number) {
+export function claudeItinerarySchemaFor(mode: TripMode, totalDays: number, refs: string[] = []) {
   const period = mode === "tonight" ? z.literal("evening") : periodSchema;
+
+  /**
+   * Quand le socle fournit des lieux, `ref` devient **obligatoire et fermé sur la liste**.
+   *
+   * Une consigne ne suffisait pas, et la mesure est nette : sur un voyage de six jours, le taux
+   * d'étapes confirmées était bimodal — 87 à 90 % quand le modèle suivait la liste, 10 à 40 %
+   * quand il décrochait pour composer de mémoire. Et ce qu'il produit alors n'est pas la pépite
+   * qu'on espérait préserver : des rues (« Rue Solférino »), des quartiers, des restaurants
+   * génériques, et deux fois la même gare faute de choix.
+   *
+   * L'énumération rend le décrochage impossible : l'API ne peut produire qu'une référence
+   * existante. Le repli hors liste reste possible quand il n'y a **pas** de socle — sans
+   * coordonnées, hors couverture, base indisponible — et c'est là qu'il a du sens.
+   */
+  const step =
+    refs.length > 0
+      ? claudeItineraryStepSchema.extend({
+          period,
+          day: z.number().int().min(1).max(totalDays),
+          ref: z.enum(refs as [string, ...string[]]),
+        })
+      : claudeItineraryStepSchema.extend({
+          period,
+          day: z.number().int().min(1).max(totalDays),
+        });
 
   return itinerarySchema.omit({ id: true }).extend({
     totalDays: z.literal(totalDays),
-    steps: z
-      .array(
-        claudeItineraryStepSchema.extend({
-          period,
-          day: z.number().int().min(1).max(totalDays),
-        })
-      )
-      .min(1),
+    steps: z.array(step).min(1),
   });
 }
 

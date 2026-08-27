@@ -26,13 +26,23 @@ const URL_BASE = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const CLE = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
 
 /**
- * Mesuré, et c'est le seul arbitrage coûteux de l'inversion : à 90 candidats, la première
- * proposition d'un week-end à Bordeaux tombait à 18,8 s contre 9,8 s sans socle — le modèle passe
- * son temps à lire la liste. À 50, le choix reste largement suffisant (une soirée compte 4 étapes,
- * un week-end 8) et l'attente redevient tenable. Le socle lui-même ne coûte que 0,22 s : tout le
- * surcoût est dans la longueur du prompt.
+ * Taille du vivier, par mode — le seul arbitrage coûteux de l'inversion.
+ *
+ * Le prompt est ce qui coûte : à 90 candidats, la première proposition d'un week-end à Bordeaux
+ * tombait à 18,8 s contre 9,8 s sans socle, le modèle passant son temps à lire la liste. Le socle
+ * lui-même ne pèse que 0,22 s.
+ *
+ * Mais un vivier trop maigre coûte encore plus cher : mesuré au banc d'essai, un voyage de six
+ * jours à Lille ne confirmait que **4 étapes sur 18** avec 50 candidats. Faute de trouver de quoi
+ * composer, le modèle repart de sa propre connaissance — c'est-à-dire du défaut qu'on corrige.
+ * Le vivier suit donc le nombre d'étapes à composer : 4 pour une soirée, 8 pour un week-end,
+ * jusqu'à 18 pour un voyage.
  */
-const CANDIDATS_MAX = 50;
+const CANDIDATS_MAX: Record<TripMode, number> = {
+  tonight: 50,
+  weekend: 70,
+  trip: 130,
+};
 
 /**
  * Enseignes écartées du vivier. Elles existent, sont correctement référencées, et ne sont jamais
@@ -56,11 +66,14 @@ export interface PlaceCandidate {
   type: PlaceType;
   themes: ThemeId[];
   distanceM: number;
+  /** Commune du lieu — indispensable en mode voyage, où le vivier couvre des dizaines de villes. */
+  city: string | null;
 }
 
 interface LigneRpc {
   ref: string;
   fsq_id: string;
+  commune: string | null;
   nom: string;
   lat: number;
   lng: number;
@@ -97,28 +110,30 @@ export async function fetchCandidates(options: {
   if (!URL_BASE || !CLE) return [];
 
   const { origin, mode, distance, themes, seed } = options;
+  const plafond = CANDIDATS_MAX[mode];
   // Assez large pour que chaque période de chaque jour ait le choix, sans noyer le prompt.
-  const parTheme = themes && themes.length > 0 ? Math.ceil(CANDIDATS_MAX / themes.length) : 9;
+  const parTheme = themes && themes.length > 0 ? Math.ceil(plafond / themes.length) : Math.ceil(plafond / 6);
+
+  // Un voyage ne se cherche pas dans un rayon mais dans des villes : à 150 km à la ronde, le
+  // balayage par proximité dépassait le délai d'exécution *par intermittence*, et cet échec est
+  // silencieux — le modèle composait alors sans socle. C'est ce qui rendait le taux de
+  // confirmation bimodal en mode voyage : 87 % quand la requête passait, 20 % sinon.
+  const fonction = mode === "trip" ? "candidats_voyage" : "candidats_autour";
+  const corps = JSON.stringify({
+    p_lat: origin.lat,
+    p_lng: origin.lng,
+    p_rayon_km: rayonKm(mode, distance),
+    p_themes: themes && themes.length > 0 ? themes : null,
+    p_par_theme: parTheme,
+    p_graine: seed,
+  });
 
   try {
-    const response = await fetch(`${URL_BASE}/rest/v1/rpc/candidats_autour`, {
-      method: "POST",
-      headers: { apikey: CLE, Authorization: `Bearer ${CLE}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        p_lat: origin.lat,
-        p_lng: origin.lng,
-        p_rayon_km: rayonKm(mode, distance),
-        p_themes: themes && themes.length > 0 ? themes : null,
-        p_par_theme: parTheme,
-        p_graine: seed,
-      }),
-    });
-    if (!response.ok) return [];
-
-    const lignes = (await response.json()) as LigneRpc[];
+    const lignes = await interroger(fonction, corps);
+    if (!lignes) return [];
     return lignes
       .filter((l) => !estUneChaine(l.nom))
-      .slice(0, CANDIDATS_MAX)
+      .slice(0, plafond)
       .map((l) => ({
         ref: l.ref,
         id: l.fsq_id,
@@ -128,11 +143,29 @@ export async function fetchCandidates(options: {
         type: l.type_lieu as PlaceType,
         themes: l.themes as ThemeId[],
         distanceM: l.distance_m,
+        city: l.commune,
       }));
   } catch {
     // Socle indisponible : on ne casse pas la génération, elle repart comme avant.
     return [];
   }
+}
+
+/**
+ * Un aller-retour, avec **une** reprise. La requête est lourde par nature et le premier appel
+ * après une période creuse peut dépasser le délai ; réessayer une fois rattrape ce cas, et
+ * s'arrête là — au-delà, on ferait attendre l'utilisateur pour un socle qui ne répond pas.
+ */
+async function interroger(fonction: string, corps: string): Promise<LigneRpc[] | null> {
+  for (let essai = 0; essai < 2; essai++) {
+    const response = await fetch(`${URL_BASE}/rest/v1/rpc/${fonction}`, {
+      method: "POST",
+      headers: { apikey: CLE!, Authorization: `Bearer ${CLE!}`, "Content-Type": "application/json" },
+      body: corps,
+    });
+    if (response.ok) return (await response.json()) as LigneRpc[];
+  }
+  return null;
 }
 
 function estUneChaine(nom: string): boolean {
@@ -152,17 +185,18 @@ export function resolveCandidate(
   ref: string | null | undefined,
   placeName: string,
   candidates: PlaceCandidate[]
-): PlaceCandidate | null {
+): { candidat: PlaceCandidate; parRef: boolean } | null {
   if (candidates.length === 0) return null;
 
   if (ref) {
     const cle = ref.replace(/\s+/g, "").toUpperCase();
     const exact = candidates.find((c) => c.ref.toUpperCase() === cle);
-    if (exact) return exact;
+    if (exact) return { candidat: exact, parRef: true };
   }
 
   const cherche = normaliser(placeName);
-  return candidates.find((c) => normaliser(c.name) === cherche) ?? null;
+  const parNom = candidates.find((c) => normaliser(c.name) === cherche);
+  return parNom ? { candidat: parNom, parRef: false } : null;
 }
 
 /** Distance entre ce que le modèle a écrit et le lieu réel — sert à repérer une confusion. */
