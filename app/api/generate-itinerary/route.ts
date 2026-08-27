@@ -60,7 +60,7 @@ export async function POST(request: NextRequest) {
   // Quota décompté seulement après validation : le but est de limiter les appels payants à
   // Claude, pas les requêtes malformées. Le compter avant laisserait un bug côté client
   // épuiser le quota d'un utilisateur pour une heure sans qu'aucune génération ait eu lieu.
-  const rateLimit = checkRateLimit(getClientIp(request));
+  const rateLimit = await checkRateLimit(getClientIp(request));
   if (!rateLimit.allowed) {
     return errorResponse(
       "RATE_LIMITED",

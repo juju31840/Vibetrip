@@ -18,7 +18,8 @@ import { NextResponse } from "next/server";
  * indéfiniment que le `place_id`.
  */
 
-export const maxDuration = 300;
+// 60 s : la limite du plan Hobby. C'est elle qui impose de paralléliser les appels.
+export const maxDuration = 60;
 export const dynamic = "force-dynamic";
 
 const GOOGLE_URL = "https://places.googleapis.com/v1/places:searchText";
@@ -30,6 +31,9 @@ const MAX_DISTANCE_M = 300;
 const PROXIMITE_M = 60;
 
 const LOT = 150;
+
+/** Requêtes simultanées. En séquentiel, 150 lieux demandaient 75 s — au-delà de la limite. */
+const CONCURRENCE = 8;
 
 interface Lieu {
   fsq_id: string;
@@ -108,13 +112,17 @@ export async function GET(request: Request) {
   let ouverts = 0;
   let introuvables = 0;
   const fermes: string[] = [];
+  let arrete = false;
 
-  for (const lieu of file) {
+  const cleGoogle: string = cle;
+
+  async function traiter(lieu: Lieu) {
+    if (arrete) return;
     const requete = [lieu.nom, lieu.adresse, lieu.commune].filter(Boolean).join(" ");
     const reponse = await fetch(GOOGLE_URL, {
       method: "POST",
       headers: {
-        "X-Goog-Api-Key": cle,
+        "X-Goog-Api-Key": cleGoogle,
         // Masque minimal : demander horaires ou avis reclasse l'appel au tarif supérieur.
         "X-Goog-FieldMask": "places.id,places.location,places.businessStatus,places.displayName",
         "Content-Type": "application/json",
@@ -127,8 +135,8 @@ export async function GET(request: Request) {
         maxResultCount: 5,
       }),
     });
-    // Quota atteint ou panne : on s'arrête là et on reprendra demain, la file est persistante.
-    if (!reponse.ok) break;
+    // Quota atteint ou panne : on cesse d'appeler et on reprendra demain, la file est persistante.
+    if (!reponse.ok) { arrete = true; return; }
 
     const data = (await reponse.json()) as {
       places?: {
@@ -162,6 +170,11 @@ export async function GET(request: Request) {
              google_place_id = ${placeId ? `'${placeId.replace(/'/g, "''")}'` : "null"}
       where fsq_id = '${lieu.fsq_id.replace(/'/g, "''")}'
     `);
+  }
+
+  for (let i = 0; i < file.length; i += CONCURRENCE) {
+    if (arrete) break;
+    await Promise.all(file.slice(i, i + CONCURRENCE).map(traiter));
   }
 
   return NextResponse.json({ verifies: file.length, ouverts, introuvables, fermes });
