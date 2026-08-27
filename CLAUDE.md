@@ -792,6 +792,49 @@ propositions bien distinctes. La crainte d'un parcours « plat » ne s'est pas v
 lecture rencontré : « La Panière » classée en sortie de nuit paraissait absurde — c'est en réalité
 une **salle de concert** lyonnaise, homonyme de la chaîne de boulangeries. Le socle avait raison.
 
+### Ce que la journée du 27/08 a encore appris
+
+**Haiku redevient le modèle par défaut.** Ses deux défauts rédhibitoires sont tombés avec
+l'inversion : il perdait des propositions entières parce que ses coordonnées fausses étaient
+vidées par le filtre de plausibilité (l'ancrage les remplace), et il ne respectait pas les
+périodes (le schéma s'en charge — et la mesure a montré que **Sonnet l'enfreignait aussi**).
+Reste l'écart de vitesse, mesuré à contrat et socle identiques : un week-end à Bordeaux livre
+ses trois propositions en **7,7 s contre 19,6 s**, à taux de confirmation équivalent.
+
+**Contraindre vaut mieux que demander.** Le contrat des périodes était une consigne du prompt,
+que les deux modèles négligeaient. Passé dans le schéma (`claudeItinerarySchemaFor`), il devient
+impossible à enfreindre. Même logique pour les références : `z.enum` sur les refs réellement
+proposées, ce qui interdit au modèle de décrocher de la liste.
+
+**Trois familles de bruit dans le référentiel**, toutes marginales en volume et toutes
+surreprésentées en tête de résultats parce que **posées en centre-ville** :
+- 2 880 **coordonnées de repli** (centroïde de la commune) — quatre bars de quatre
+  arrondissements lyonnais au même point, quatre des six premiers résultats d'une recherche ;
+- 4 691 **enseignes de chaîne**, marquées en base et non filtrées côté application, pour que la
+  règle vaille aussi bien à la génération qu'au panneau « Changer » ;
+- 586 **noms qui n'en sont pas** — la commune elle-même (« Париж »), ou aucun caractère latin.
+
+**Le champ commune cumule trois pièges** : « Paris » sous 9 casses, « Aix-en-Provence » sous 12
+orthographes, et 2 629 lieux écrits « Ville, France » formant 817 communes fantômes — dont un
+`lille-france` distinct de `lille`. D'où `locality_norm`, qui retire aussi le suffixe de pays.
+**Toute requête par ville passe par elle.**
+
+**Un voyage se cherche dans des villes, pas dans un rayon.** Le banc donnait 4 étapes confirmées
+sur 18. Trois causes empilées : la requête dépassait le délai d'exécution *par intermittence* sur
+150 km (échec silencieux → le modèle compose sans socle → taux bimodal, 87 % ou 20 %) ; les
+villes étaient triées par proximité, ce qui ne remontait que les banlieues ; et la ville de
+départ tombait à 11 lieux sur 130, d'où des rues en guise d'étapes et deux fois la même gare.
+Corrigé par l'agrégat `communes` (0,2-0,9 s), un tri par richesse, et un plafond plus élevé au
+départ. Lille passe de 22 % à 77 %.
+
+**Deux erreurs à ne pas refaire, les miennes** :
+- **RLS activée sans policy = table invisible, sans erreur.** `communes` était lue par une
+  fonction `stable` s'exécutant avec les droits de l'appelant : elle rendait 0 candidat, code 200.
+  C'est l'échec le plus difficile à voir, parce qu'il ressemble à un résultat.
+- **Vérifier le solde API avant de suspecter le code.** Une série de mesures à 0 % m'a fait
+  soupçonner la requête ; le crédit Anthropic était épuisé. C'est écrit dans les notes du projet
+  depuis le 25/08, et je l'ai quand même cherché ailleurs.
+
 ### Reste à faire
 
 - **Inverser le pipeline** : composer parmi des candidats réels de la base au lieu d'inventer puis
