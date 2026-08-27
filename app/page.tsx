@@ -147,7 +147,6 @@ export default function Page() {
       return openedProposal ? (
         <ProposalDetailScreen
           proposal={openedProposal}
-          allProposals={state.itineraries}
           onValidate={validateProposal}
           onBack={() => setOpenedProposal(null)}
         />

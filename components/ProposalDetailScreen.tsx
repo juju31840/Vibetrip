@@ -6,7 +6,6 @@ import clsx from "clsx";
 import { Button } from "@/components/ui/Button";
 import { chipClass } from "@/components/ui/chip";
 import { ArrowLeftIcon, CheckIcon } from "@/components/ui/icons";
-import { alternativesFor } from "@/lib/alternatives";
 import { THEMES, findNearby, themeForType, type ThemeId } from "@/lib/nearby-places";
 import type { Itinerary, ItineraryStep } from "@/types/itinerary";
 
@@ -22,8 +21,6 @@ const PERIOD_LABELS: Record<ItineraryStep["period"], string> = {
 
 interface ProposalDetailScreenProps {
   proposal: Itinerary;
-  /** Toutes les propositions : elles fournissent les alternatives de remplacement. */
-  allProposals: Itinerary[];
   onValidate: (itinerary: Itinerary) => void;
   onBack: () => void;
 }
@@ -41,7 +38,6 @@ interface ProposalDetailScreenProps {
  */
 export function ProposalDetailScreen({
   proposal,
-  allProposals,
   onValidate,
   onBack,
 }: ProposalDetailScreenProps) {
@@ -99,7 +95,6 @@ export function ProposalDetailScreen({
 
         <ol className="mt-1 flex flex-col">
           {steps.map((step, index) => {
-            const alternatives = alternativesFor(step, steps, allProposals);
             return (
               <li key={step.id} className="flex flex-col">
                 <StepRow
@@ -116,7 +111,6 @@ export function ProposalDetailScreen({
                 {editingStepId === step.id && (
                   <AlternativeList
                     step={step}
-                    curated={alternatives}
                     excludeNames={steps.map((item) => item.placeName)}
                     onPick={(replacement) => replaceStep(step.id, replacement)}
                   />
@@ -222,12 +216,10 @@ function StepRow({
  */
 function AlternativeList({
   step,
-  curated,
   excludeNames,
   onPick,
 }: {
   step: ItineraryStep;
-  curated: ItineraryStep[];
   excludeNames: string[];
   onPick: (step: ItineraryStep) => void;
 }) {
@@ -252,15 +244,13 @@ function AlternativeList({
 
   return (
     <div className="mb-1 flex flex-col gap-3 border-2 border-dashed border-ink-mute p-3">
-      {curated.length > 0 && (
-        <div className="flex flex-col gap-2">
-          <span className="text-overline uppercase text-ink-soft">Dans les autres idées</span>
-          {curated.map((alternative) => (
-            <AlternativeRow key={alternative.id} step={alternative} onPick={onPick} />
-          ))}
-        </div>
-      )}
-
+      {/* Une seule source d'alternatives depuis le 27/08/2026, et c'est le socle.
+          « Dans les autres idées » proposait en plus les étapes des autres propositions. Cette
+          section datait d'avant le panneau par thème et n'a plus lieu d'être : elle ne rendait
+          souvent qu'un seul candidat — c'est ce qui avait motivé la recherche par thème — là où
+          le socle en rend huit à douze, tous réels, sans chaînes ni lieux fermés. Elle coûtait
+          une section de plus dans un panneau déjà dense sur un téléphone, et faisait traverser
+          `allProposals` sur deux niveaux de composants. */}
       <div className="flex flex-col gap-2">
         <span className="text-overline uppercase text-ink-soft">Autre chose à proximité</span>
 
