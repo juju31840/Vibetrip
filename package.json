@@ -12,7 +12,8 @@
     "verify:google": "node scripts/verify-google.mjs",
     "refresh:places": "node scripts/refresh-places.mjs",
     "check:places": "node -e \"const{execSync}=require('child_process');console.log('utiliser /check-places-db pour le contrôle détaillé')\"",
-    "routine:places": "bash scripts/routine-places.sh"
+    "routine:places": "bash scripts/routine-places.sh",
+    "check:prod": "node scripts/check-prod.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.120.0",
