@@ -923,6 +923,26 @@ exposée avec une clé API derrière, elle offrait le crédit au premier venu.
 exige un contexte sécurisé et était donc *impossible* en HTTP sur le réseau local — les testeurs
 saisissaient forcément leur ville à la main.
 
+### Rechargement Foursquare — bloqué côté compte (28/08/2026)
+
+`npm run refresh:places` interroge le catalogue et diagnostique. L'accès **fonctionne** — jeton
+accepté, catalogue joignable — mais ses trois espaces de noms (`datasets`, `attribute_packs`,
+`plugins`) sont **vides** : le jeu OS Places n'est pas rattaché au compte. À ajouter depuis le
+Places Portal ; rien dans le code n'y changera quoi que ce soit.
+
+**L'endpoint ne se trouve que dans le portail** : `catalog.h3-hub.foursquare.com/iceberg`, avec
+le préfixe `places` imposé par `GET /v1/config?warehouse=places`. `data.foursquare.com/iceberg`,
+deviné au premier essai, n'existe pas — et la documentation publique ne donne pas le snippet.
+
+**Le jeton expire au bout d'un mois**, maximum accordé par le portail. Le rechargement ne peut
+donc pas être entièrement automatique : il faut en régénérer un à chaque fois. Une routine qui le
+supposerait permanent échouerait silencieusement au bout de trente jours.
+
+**Rien d'urgent** : le miroir public s'arrête à la version du 6 février 2025, qui est déjà celle
+en base. Il n'y a donc rien à gagner à recharger tant que le catalogue reste fermé. Et c'est la
+vérification Google qui porte l'essentiel de la fraîcheur — 13 % de fermetures détectées, ce que
+le rechargement d'un référentiel ne donnerait pas.
+
 ### Reste à faire
 
 - **Inverser le pipeline** : composer parmi des candidats réels de la base au lieu d'inventer puis
