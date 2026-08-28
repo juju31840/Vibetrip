@@ -9,6 +9,8 @@ interface ItineraryBottomSheetProps {
   steps: ItineraryStep[];
   activeStepId: string | null;
   doneStepIds: string[];
+  /** Nom d'étape → date de fermeture constatée (lib/closed-places.ts). */
+  closedSteps?: Map<string, string | null>;
   onSelectStep: (stepId: string) => void;
   onToggleStepDone: (stepId: string) => void;
 }
@@ -29,6 +31,7 @@ export function ItineraryBottomSheet({
   steps,
   activeStepId,
   doneStepIds,
+  closedSteps,
   onSelectStep,
   onToggleStepDone,
 }: ItineraryBottomSheetProps) {
@@ -82,6 +85,7 @@ export function ItineraryBottomSheet({
                   <StepCard
                     key={step.id}
                     step={step}
+                    closedOn={closedSteps?.get(step.placeName)}
                     isActive={step.id === activeStepId}
                     isDone={doneStepIds.includes(step.id)}
                     onSelect={onSelectStep}

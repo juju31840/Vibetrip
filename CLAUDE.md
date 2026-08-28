@@ -968,6 +968,34 @@ en base. Il n'y a donc rien à gagner à recharger tant que le catalogue reste f
 vérification Google qui porte l'essentiel de la fraîcheur — 13 % de fermetures détectées, ce que
 le rechargement d'un référentiel ne donnerait pas.
 
+### Deux manques comblés avant les tests (28/08/2026)
+
+**Un lieu fermé est signalé dans les itinéraires déjà enregistrés.** C'était le dernier trou de
+la promesse : un lieu marqué `closed` disparaît des nouvelles générations, mais un itinéraire
+sauvegardé la veille gardait le sien — quelqu'un s'y rendait et trouvait porte close. Or la fin
+de la boucle est qu'il **s'y rende vraiment**, ce qui a justifié tout le socle.
+
+Les itinéraires vivent dans le navigateur et ne portent que nom et coordonnée, jamais
+d'identifiant — le socle est arrivé après eux. La correspondance se refait donc en base
+(`statut_etapes`), par proximité et par nom. **150 m et non 300** comme pour Google : ici on ne
+cherche pas à identifier un lieu mais à confirmer qu'une étape est bien celle qu'on croit. Un
+faux positif annoncerait une fermeture à quelqu'un dont le lieu est ouvert, et lui ferait annuler
+une sortie qui tenait debout — plus grave qu'une fermeture manquée.
+
+**Seul endroit où le vermillon sort de son rôle d'action**, et c'est assumé. La règle veut qu'on
+ne crie pas à l'erreur pour un lieu non confirmé — ils sont la moitié, les colorer ferait passer
+un produit qui marche pour un produit cassé. Un lieu fermé est l'inverse : rare (13 % des lieux
+vérifiés) et sans appel. Ne pas le distinguer reviendrait à laisser partir quelqu'un devant une
+porte close pour préserver une règle graphique.
+
+**Le quota compte par appareil, plus seulement par adresse.** Trois amis derrière la même box
+saturaient un quota de quinze en cinq essais chacun — c'est-à-dire exactement la situation d'un
+test entre proches. L'appareil envoie un identifiant tiré au sort et gardé dans son navigateur
+(`x-vibetrip-client`) ; il est contournable, et ce n'est pas grave : **le quota protège une
+dépense, il ne garde pas une porte**. Le garde-fou contre le contournement est le second
+compteur, par adresse, quatre fois plus large. Vérifié : deux appareils sur une même IP gardent
+des quotas distincts.
+
 ### Reste à faire
 
 - **Inverser le pipeline** : composer parmi des candidats réels de la base au lieu d'inventer puis

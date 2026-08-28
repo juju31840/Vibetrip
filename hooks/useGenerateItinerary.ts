@@ -19,6 +19,32 @@ type GenerationState =
   | { status: "success"; itineraries: Itinerary[] }
   | { status: "error"; message: string };
 
+/**
+ * Identifiant d'appareil, tiré au sort une fois et gardé dans le navigateur.
+ *
+ * Il sert uniquement à compter les générations par appareil plutôt que par adresse IP : derrière
+ * une même box, trois personnes qui testent saturaient sinon le quota commun en quelques essais.
+ *
+ * Ce n'est ni un identifiant de personne ni un traceur — il ne quitte pas l'appareil autrement
+ * que comme clé de comptage, n'est rattaché à rien, et disparaît si l'on vide son stockage.
+ */
+function clientId(): string {
+  const CLE = "vibetrip.client.v1";
+  try {
+    const existant = window.localStorage.getItem(CLE);
+    if (existant) return existant;
+    const neuf =
+      typeof crypto !== "undefined" && "randomUUID" in crypto
+        ? crypto.randomUUID()
+        : `c-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+    window.localStorage.setItem(CLE, neuf);
+    return neuf;
+  } catch {
+    // Navigation privée ou stockage refusé : le compte retombe sur l'adresse seule.
+    return "";
+  }
+}
+
 export function useGenerateItinerary() {
   const [state, setState] = useState<GenerationState>({ status: "idle" });
 
@@ -43,7 +69,7 @@ export function useGenerateItinerary() {
     try {
       const response = await fetch("/api/generate-itinerary", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "x-vibetrip-client": clientId() },
         body: JSON.stringify(request),
         signal: controller.signal,
       });

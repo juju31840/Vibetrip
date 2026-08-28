@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import { ItineraryBottomSheet } from "@/components/ItineraryBottomSheet";
 import { ArrowLeftIcon } from "@/components/ui/icons";
+import { findClosedSteps } from "@/lib/closed-places";
 import type { Itinerary } from "@/types/itinerary";
 
 const MapView = dynamic(() => import("@/components/MapView").then((mod) => mod.MapView), {
@@ -27,6 +28,31 @@ export function ResultScreen({
   // `flyTo` de MapView, qui écraserait le `fitBounds` initial et masquerait les autres
   // étapes. La vue d'ensemble d'abord, le zoom seulement sur action de l'utilisateur.
   const [activeStepId, setActiveStepId] = useState<string | null>(null);
+
+  /**
+   * Les lieux de cet itinéraire qui ont fermé depuis son enregistrement.
+   *
+   * Vérifié à l'ouverture et non à la génération : c'est justement l'écart entre les deux qui
+   * crée le problème. Un itinéraire sauvegardé la semaine dernière garde ses lieux, alors que la
+   * vérification quotidienne en a peut-être condamné un depuis — et la promesse du produit est
+   * que l'utilisateur s'y rende vraiment.
+   *
+   * L'appel ne bloque rien : la carte et les étapes s'affichent d'abord, la mention apparaît
+   * quand la réponse arrive. En cas d'échec, on ne montre rien — inquiéter sans pouvoir le
+   * justifier serait pire que se taire.
+   */
+  const [closedSteps, setClosedSteps] = useState<Map<string, string | null>>(new Map());
+
+  useEffect(() => {
+    let cancelled = false;
+    findClosedSteps(itinerary.steps).then((fermes) => {
+      if (cancelled || fermes.length === 0) return;
+      setClosedSteps(new Map(fermes.map((f) => [f.placeName, f.closedOn])));
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [itinerary.steps]);
 
   return (
     <main className="relative h-[100dvh] overflow-hidden">
@@ -67,6 +93,7 @@ export function ResultScreen({
 
       <ItineraryBottomSheet
         steps={itinerary.steps}
+        closedSteps={closedSteps}
         activeStepId={activeStepId}
         doneStepIds={doneStepIds}
         onSelectStep={setActiveStepId}

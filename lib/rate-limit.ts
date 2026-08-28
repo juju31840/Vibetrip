@@ -40,13 +40,20 @@ export interface RateLimitResult {
 const URL_BASE = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const CLE = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
 
-export async function checkRateLimit(key: string): Promise<RateLimitResult> {
+/**
+ * Plafond par adresse IP, quel que soit le nombre d'appareils derrière. Quatre fois le quota
+ * courant : assez pour un foyer ou un groupe d'amis, pas assez pour vider un crédit en renouvelant
+ * son identifiant d'appareil à chaque appel.
+ */
+export const MAX_PAR_ADRESSE = MAX_TOKENS * 4;
+
+export async function checkRateLimit(key: string, max = MAX_TOKENS): Promise<RateLimitResult> {
   if (URL_BASE && CLE) {
     try {
       const response = await fetch(`${URL_BASE}/rest/v1/rpc/consommer_quota`, {
         method: "POST",
         headers: { apikey: CLE, Authorization: `Bearer ${CLE}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ p_cle: key, p_max: MAX_TOKENS }),
+        body: JSON.stringify({ p_cle: key, p_max: max }),
       });
       if (response.ok) {
         const [ligne] = (await response.json()) as { autorise: boolean; restant: number }[];
@@ -56,22 +63,22 @@ export async function checkRateLimit(key: string): Promise<RateLimitResult> {
       // Base injoignable : on retombe sur le compteur mémoire plutôt que de bloquer l'utilisateur.
     }
   }
-  return checkInMemory(key);
+  return checkInMemory(key, max);
 }
 
 /** Repli hors ligne, et seul mode disponible en développement sans identifiants Supabase. */
-function checkInMemory(key: string): RateLimitResult {
+function checkInMemory(key: string, max = MAX_TOKENS): RateLimitResult {
   const now = Date.now();
   const existing = buckets.get(key);
 
   if (!existing) {
-    buckets.set(key, { tokens: MAX_TOKENS - 1, lastRefillAt: now });
-    return { allowed: true, remaining: MAX_TOKENS - 1 };
+    buckets.set(key, { tokens: max - 1, lastRefillAt: now });
+    return { allowed: true, remaining: max - 1 };
   }
 
   const elapsed = now - existing.lastRefillAt;
   if (elapsed >= REFILL_WINDOW_MS) {
-    existing.tokens = MAX_TOKENS;
+    existing.tokens = max;
     existing.lastRefillAt = now;
   }
 

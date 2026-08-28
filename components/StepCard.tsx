@@ -13,6 +13,8 @@ const PERIOD_LABELS: Record<ItineraryStep["period"], string> = {
 
 interface StepCardProps {
   step: ItineraryStep;
+  /** Le lieu a fermé depuis l'enregistrement de l'itinéraire (lib/closed-places.ts). */
+  closedOn?: string | null;
   isActive: boolean;
   isDone: boolean;
   onSelect: (stepId: string) => void;
@@ -24,7 +26,7 @@ interface StepCardProps {
  * petites capitales, le nom en grasse condensée. Plus de carte blanche arrondie — c'était l'un
  * des trois traits qui faisaient reconnaître l'interface comme générée.
  */
-export function StepCard({ step, isActive, isDone, onSelect, onToggleDone }: StepCardProps) {
+export function StepCard({ step, closedOn, isActive, isDone, onSelect, onToggleDone }: StepCardProps) {
   return (
     <div
       className={clsx(
@@ -63,7 +65,7 @@ export function StepCard({ step, isActive, isDone, onSelect, onToggleDone }: Ste
           {step.placeName}
         </span>
         <span className="mt-1 text-body text-ink-soft">{step.description}</span>
-        <VerificationNote step={step} />
+        <VerificationNote step={step} closedOn={closedOn} />
       </button>
 
       {/* Fermeture de la boucle : l'utilisateur se rend réellement sur place. Ouvert dans un
@@ -95,7 +97,30 @@ export function StepCard({ step, isActive, isDone, onSelect, onToggleDone }: Ste
  * Quand la vérification n'a pas pu avoir lieu (`null`), on n'affiche rien : prétendre un doute
  * qu'on n'a pas mesuré serait aussi trompeur que prétendre une certitude.
  */
-function VerificationNote({ step }: { step: ItineraryStep }) {
+function VerificationNote({
+  step,
+  closedOn,
+}: {
+  step: ItineraryStep;
+  closedOn?: string | null;
+}) {
+  // La fermeture prime sur tout le reste : une adresse confirmée qui a fermé reste une porte
+  // close, et c'est la seule information qui doive faire renoncer à l'étape.
+  //
+  // **Seul cas où le vermillon sort de son rôle d'action**, et c'est assumé. La règle du système
+  // veut qu'on ne crie pas à l'erreur pour un lieu simplement non confirmé — ils sont la moitié,
+  // les colorer ferait passer un produit qui marche pour un produit cassé. Un lieu fermé est
+  // l'exact inverse : rare (13 % des lieux vérifiés) et sans appel. Ne pas le distinguer
+  // reviendrait à laisser quelqu'un partir devant une porte close pour préserver une règle
+  // graphique.
+  if (closedOn !== undefined && closedOn !== null) {
+    return (
+      <span className="mt-1.5 inline-flex w-fit items-center gap-1.5 border-2 border-danger px-1.5 py-0.5 text-[0.6875rem] font-bold uppercase tracking-[0.08em] text-danger">
+        Ce lieu a fermé
+      </span>
+    );
+  }
+
   if (step.verified === null || step.verified === undefined) return null;
 
   if (step.verified) {

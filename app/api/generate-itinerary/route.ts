@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { generateItineraryRequestSchema } from "@/lib/itinerary-schema";
 import { generateProposals, ItineraryParseError } from "@/lib/claude";
-import { checkRateLimit } from "@/lib/rate-limit";
+import { checkRateLimit, MAX_PAR_ADRESSE } from "@/lib/rate-limit";
 import { filterPlausibleSteps } from "@/lib/geo";
 import { geocodeCity } from "@/lib/geocode";
 import { verifySteps } from "@/lib/verify-places";
@@ -20,6 +20,27 @@ function getClientIp(request: NextRequest): string {
   const forwardedFor = request.headers.get("x-forwarded-for");
   if (forwardedFor) return forwardedFor.split(",")[0]!.trim();
   return "unknown";
+}
+
+/**
+ * Clé de quota : l'appareil d'abord, l'adresse ensuite.
+ *
+ * Compter par IP seule punit les gens qui partagent un réseau — trois amis sur le même wifi
+ * saturaient un quota de quinze en cinq essais chacun, et c'est précisément la situation d'un
+ * test entre proches. L'appareil envoie donc un identifiant tiré au sort et gardé dans son
+ * navigateur.
+ *
+ * **Il est contournable, et ce n'est pas grave** : le quota protège une dépense, il ne garde pas
+ * une porte. Quelqu'un qui vide son stockage repart à zéro — le garde-fou est ailleurs, dans le
+ * plafond par adresse ci-dessous, qui lui ne bouge pas.
+ */
+function quotaKeys(request: NextRequest): { appareil: string; adresse: string } {
+  const ip = getClientIp(request);
+  const client = request.headers.get("x-vibetrip-client");
+  // L'identifiant est repris tel quel mais borné : un en-tête vient du client, donc d'un
+  // inconnu, et une clé de longueur arbitraire est une écriture arbitraire en base.
+  const propre = client?.replace(/[^A-Za-z0-9-]/g, "").slice(0, 40);
+  return { appareil: propre ? `${ip}:${propre}` : ip, adresse: `ip:${ip}` };
 }
 
 /**
@@ -60,7 +81,15 @@ export async function POST(request: NextRequest) {
   // Quota décompté seulement après validation : le but est de limiter les appels payants à
   // Claude, pas les requêtes malformées. Le compter avant laisserait un bug côté client
   // épuiser le quota d'un utilisateur pour une heure sans qu'aucune génération ait eu lieu.
-  const rateLimit = await checkRateLimit(getClientIp(request));
+  // Deux compteurs : un par appareil au quota courant, un par adresse quatre fois plus large.
+  // Le premier laisse vivre un groupe d'amis derrière une même box ; le second empêche qu'on
+  // contourne indéfiniment en renouvelant son identifiant.
+  const { appareil, adresse } = quotaKeys(request);
+  const [parAppareil, parAdresse] = await Promise.all([
+    checkRateLimit(appareil),
+    checkRateLimit(adresse, MAX_PAR_ADRESSE),
+  ]);
+  const rateLimit = parAppareil.allowed ? parAdresse : parAppareil;
   if (!rateLimit.allowed) {
     return errorResponse(
       "RATE_LIMITED",
