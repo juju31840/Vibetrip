@@ -1,5 +1,7 @@
 # Déployer VibeTrip
 
+**En ligne depuis le 28/08/2026 : https://vibetrip-schuft.vercel.app**
+
 Tout est prêt côté code. Il reste trois commandes et un réglage, dans cet ordre.
 
 ## 1. Se connecter
@@ -46,6 +48,17 @@ npx vercel env add VIBETRIP_RATE_LIMIT production
 ```bash
 npx vercel --prod
 ```
+
+## L'adresse publique n'est pas celle qu'on croit
+
+`vibetrip.vercel.app` **appartient à quelqu'un d'autre** — les sous-domaines `.vercel.app` sont
+globaux et celui-ci était pris (un site espagnol). L'adresse du projet est
+`vibetrip-schuft.vercel.app`, suffixée du nom d'équipe.
+
+Et par défaut, **Vercel protège toutes les URLs par une authentification** : le site répondait
+302 vers une page de connexion, y compris pour l'API. Désactivé dans
+*Settings → Deployment Protection → Vercel Authentication*, sans quoi personne d'autre que le
+titulaire du compte ne peut ouvrir le site.
 
 ## 4. Vérifier
 

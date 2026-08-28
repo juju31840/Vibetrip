@@ -883,11 +883,15 @@ candidat par créneau — c'est précisément ce qui avait motivé la seconde. L
 douze, tous réels, sans chaînes ni lieux fermés. Section supprimée, `lib/alternatives.ts` avec
 elle, et la prop `allProposals` qui traversait deux niveaux de composants.
 
-### Prêt à déployer, pas encore déployé
+### En production depuis le 28/08/2026
 
-`vercel.json`, la route de cron et le quota persistant sont en place ; la procédure est dans
-`DEPLOIEMENT.md`. Restent la connexion au compte et la déclaration des secrets, qui demandent un
-navigateur.
+**https://vibetrip-schuft.vercel.app** — vérifié en production : 11 étapes sur 11 confirmées,
+10 s pour trois propositions, quota écrit en base, URL du cron protégée (401 sans jeton).
+
+Deux pièges au déploiement, consignés dans `DEPLOIEMENT.md` : `vibetrip.vercel.app` **appartient
+à quelqu'un d'autre** (les sous-domaines `.vercel.app` sont globaux — c'est un site espagnol),
+et Vercel **protège par défaut toutes les URLs** par une authentification, API comprise. Le site
+répondait 302 vers une page de connexion et paraissait cassé.
 
 **Le quota est passé en base, et ce n'était pas un raffinement** : en mémoire de processus, chaque
 instance froide serverless repart avec un compteur neuf — soit aucune limite dès que

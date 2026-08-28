@@ -32,3 +32,7 @@ design-canvas/
 
 # réglages locaux : contient des jetons d'accès, jamais versionné
 .claude/settings.local.json
+
+# secrets rassemblés pour l'import Vercel — jamais versionné
+vercel-env.txt
+.env.vercel.local
