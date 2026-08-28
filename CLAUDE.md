@@ -923,6 +923,31 @@ exposée avec une clé API derrière, elle offrait le crédit au premier venu.
 exige un contexte sécurisé et était donc *impossible* en HTTP sur le réseau local — les testeurs
 saisissaient forcément leur ville à la main.
 
+### Routine mensuelle du socle (28/08/2026)
+
+`scripts/routine-places.sh`, installée dans launchd — **le 1er de chaque mois à 9 h**. Journal
+dans `~/Library/Logs/vibetrip-places.log` ; désinstallation par `launchctl unload`.
+
+Elle vérifie l'accès au catalogue, **alerte quand le jeton expire dans moins de 8 jours** (avec
+une notification macOS, un avertissement dans un journal que personne n'ouvre n'avertit
+personne), recharge dès que le jeu de données est disponible, puis contrôle la base.
+
+**Ce qu'elle ne peut pas faire, et il faut le savoir** : régénérer le jeton. Le portail n'en
+délivre que d'un mois, par une page authentifiée. Sans l'alerte, la routine échouerait
+silencieusement au bout de trente jours et le socle vieillirait sans que personne ne le remarque
+— c'est exactement le genre de panne qu'on ne découvre que le jour où elle compte.
+
+**En local et non sur un serveur, délibérément** : le rechargement lit 2,4 Go de Parquet et écrit
+575 000 lignes, soit quarante minutes — hors de portée d'une fonction serverless. Une tâche de
+maintenance de données peut glisser de quelques jours ; ce n'est pas un service utilisateur, et
+c'est ce qui distingue ce cas du cron de vérification Google, lui hébergé sur Vercel.
+
+`scripts/ingest-places.py` porte le pipeline complet, qui **vivait jusqu'ici dans un dossier
+temporaire** et aurait été perdu. Il est paramétrable par source (miroir public ou catalogue) et
+son `on conflict do update` rafraîchit les fiches existantes **sans toucher aux colonnes
+`google_*` ni à `proposed_count`** : celles-là nous appartiennent et ne viennent pas du
+référentiel.
+
 ### Rechargement Foursquare — bloqué côté compte (28/08/2026)
 
 `npm run refresh:places` interroge le catalogue et diagnostique. L'accès **fonctionne** — jeton
