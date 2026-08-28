@@ -875,6 +875,27 @@ un lieu marqué `closed` disparaît immédiatement de la génération **et** du 
   Sous 60 m, la géographie lève l'ambiguïté que le nom ne lève pas — sans laisser passer une
   reprise sous autre enseigne (« Codebar » devenu « Buster », à 8 m : rejeté).
 
+### Ce que la vérification Google trouve réellement (28/08/2026)
+
+Sur **144 lieux vérifiés** : 34 % confirmés ouverts, **13 % fermés**, 53 % sans correspondance.
+
+**13 % de fermetures** est le chiffre à retenir, et il est cohérent avec la fraîcheur du socle
+— figé à février 2025, et les trois quarts des fiches n'ont pas bougé depuis 2022. Rapporté aux
+575 206 lieux, l'ordre de grandeur est de plusieurs dizaines de milliers d'adresses mortes. C'est
+la mesure de ce que Google apporte, et de ce que le socle seul ne peut pas savoir.
+
+**Les 53 % « sans correspondance » ne sont pas un échec mais une abstention.** Ce sont des lieux
+dont Google ne remonte aucun candidat au même nom à moins de 300 m : soit ils ont fermé et été
+remplacés (« Pavillon Noir » à Narbonne, où l'on trouve « La Cantine d'Anatole » à 46 m), soit
+leur nom a changé. On ne peut pas les déclarer fermés sans risquer de retirer un lieu qui existe
+— d'où `not_found`, qui les laisse proposables. La règle de proximité rattrape ce qui peut l'être
+sans deviner : **« Le Triskell » retrouvé sous « Crêperie Bretonne Restaurant Le Triskell »** à
+9 m, et bien fermé.
+
+Le gain de cette règle est réel mais modeste sur le volume — 57 % d'abstention contre 62 % — et
+sa valeur est ailleurs : elle décide **sur des cas que le verrou strict laissait passer**, et
+chacun de ces cas est un utilisateur envoyé devant une porte close.
+
 ### Surface area check — enfin fait
 
 Le panneau « Changer » empilait **deux sources d'alternatives**. « Dans les autres idées » (les
