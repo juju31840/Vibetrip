@@ -1158,6 +1158,38 @@ possessif parce qu'il la distingue de la carte d'un itinéraire. Vérifié à 32
 tronqué, et le bouton d'action atteignable au test de survol réel (`elementFromPoint`, pas un
 clic programmatique — leçon déjà payée sur le bug vaul).
 
+### Préférences déclarées, à côté des goûts observés (29/08/2026)
+
+Demande de l'utilisateur, et elle comble un trou que l'observation seule ne pouvait pas combler :
+**le profil observé est muet tant qu'on n'a pas coché quatre étapes**, c'est-à-dire pendant toute
+la première sortie — précisément le moment où l'on aurait le plus besoin d'être orienté. Une
+préférence déclarée agit dès la première génération.
+
+Les deux coexistent et ne sont **jamais fondues** (`lib/preferences.ts` face à `lib/taste.ts`) :
+l'une dit ce qu'on veut, l'autre ce qu'on fait. Les mélanger perdrait l'information la plus
+intéressante, l'écart entre les deux — quelqu'un qui déclare aimer la culture et ne coche que des
+bars n'est pas mal renseigné, c'est un fait sur lui. Le profil les présente donc sous deux titres
+(« Tes préférences » / « Ce qu'on a compris »), et le bouton d'application dit explicitement
+lesquelles il reporte.
+
+**La case « Partir de mes préférences » vit dans « Créer »**, comme demandé, et non en application
+automatique. Trois décisions portent du sens :
+- **Son état est déduit du brouillon, jamais gardé à part** (`draftSuitPreferences`) : toucher un
+  curseur la décoche d'elle-même, parce que le réglage a cessé de suivre les préférences. Une
+  case qui resterait cochée en mentant serait pire que pas de case.
+- **Décocher revient au réglage neutre**, ce qui la rend symétrique et réversible. Un bouton
+  n'aurait laissé aucun moyen de revenir en arrière.
+- **Elle n'apparaît pas tant qu'aucune préférence n'est utile** (`preferencesUtiles`) : des
+  préférences *renseignées* ne sont pas des préférences *neutres* — effleurer un curseur et le
+  remettre en place écrirait un enregistrement qui ne dit rien, et proposerait d'appliquer des
+  valeurs identiques aux défauts. Même règle que l'onglet resté fermé tant qu'il était vide.
+
+**Le bloc d'action du profil est repassé en flux** (il avait été mis en `sticky` le matin même) :
+les préférences ont allongé l'écran, et le bandeau collant masquait dès lors un tiers de la
+hauteur en permanence. Une page manifestement longue se défile — c'est une page qui *semble*
+complète qui cache son action. Le correctif juste dépend donc de la longueur de la page, pas du
+composant.
+
 **Reste ouvert** : le coaching (« tu n'as jamais rien fait rive droite ») demande quelques dizaines
 de points, donc plus tard. Et les goûts n'entrent dans le prompt que par le levier des envies
 existant — aucune pondération propre n'a été ajoutée, précisément pour que l'effet reste lisible.

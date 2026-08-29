@@ -14,6 +14,12 @@ import { ErrorState } from "@/components/ErrorState";
 import { ResultScreen } from "@/components/ResultScreen";
 import { Toast } from "@/components/ui/Toast";
 import { useGenerateItinerary } from "@/hooks/useGenerateItinerary";
+import {
+  ecrirePreferences,
+  lirePreferences,
+  preferencesUtiles,
+  type Preferences,
+} from "@/lib/preferences";
 import { noteVisit, rateStep } from "@/lib/closed-places";
 import { marquerNote } from "@/lib/ratings-store";
 import { useSavedItineraries } from "@/hooks/useSavedItineraries";
@@ -47,6 +53,21 @@ export default function Page() {
   const [mapZone, setMapZone] = useState<string>(ALL_ZONES);
   /** Incrémenté quand le profil dépose des envies : l'écran de réglages y fait alors défiler. */
   const [revealThemes, setRevealThemes] = useState(0);
+  /**
+   * Préférences déclarées. Lues après le montage et non à l'initialisation : `localStorage`
+   * n'existe pas au rendu serveur, et une valeur initiale différente entre serveur et client
+   * casserait l'hydratation.
+   */
+  const [preferences, setPreferences] = useState<Preferences | null>(null);
+
+  useEffect(() => {
+    setPreferences(lirePreferences());
+  }, []);
+
+  const savePreferences = useCallback((prefs: Preferences) => {
+    setPreferences(prefs);
+    ecrirePreferences(prefs);
+  }, []);
   /** Proposition ouverte en détail, avant validation. */
   const [openedProposal, setOpenedProposal] = useState<Itinerary | null>(null);
   /** Itinéraire de l'historique ouvert en plein écran. */
@@ -216,6 +237,7 @@ export default function Page() {
             onDraftChange={setDraft}
             onGenerate={generate}
             revealThemes={revealThemes > 0}
+            preferences={preferencesUtiles(preferences) ? preferences : null}
           />
         )}
         {tab === "saved" && <SavedScreen items={saved} onOpen={setOpenedId} onRemove={remove} />}
@@ -233,7 +255,13 @@ export default function Page() {
           />
         )}
         {tab === "profile" && (
-          <ProfileScreen places={places} themes={draft.themes} onApply={applyTastes} />
+          <ProfileScreen
+            places={places}
+            themes={draft.themes}
+            onApply={applyTastes}
+            preferences={preferences}
+            onPreferencesChange={savePreferences}
+          />
         )}
         <BottomNav
           active={tab}

@@ -4,6 +4,9 @@ import clsx from "clsx";
 import { chipClass } from "@/components/ui/chip";
 import { lireProfil, envieseDeduites, dernierLieu, VISITES_MINIMUM } from "@/lib/taste";
 import { listerNotes } from "@/lib/ratings-store";
+import { VibeSliders } from "@/components/VibeSliders";
+import { ThemePicker } from "@/components/ThemePicker";
+import { PREFERENCES_NEUTRES, type Preferences } from "@/lib/preferences";
 import type { VisitedPlace } from "@/lib/places-store";
 import type { ThemeId } from "@/types/itinerary";
 
@@ -12,6 +15,9 @@ interface ProfileScreenProps {
   /** Envies actuellement retenues au réglage, pour montrer si le profil est déjà appliqué. */
   themes: ThemeId[];
   onApply: (themes: ThemeId[]) => void;
+  /** Préférences déclarées. `null` tant qu'elles n'ont jamais été renseignées. */
+  preferences: Preferences | null;
+  onPreferencesChange: (prefs: Preferences) => void;
 }
 
 /**
@@ -29,7 +35,14 @@ interface ProfileScreenProps {
  * **Il se tait tant qu'il ne sait pas.** En dessous de quelques sorties, prétendre connaître
  * quelqu'un serait faux, et un profil qui se trompe sur vous est pire qu'un profil vide.
  */
-export function ProfileScreen({ places, themes, onApply }: ProfileScreenProps) {
+export function ProfileScreen({
+  places,
+  themes,
+  onApply,
+  preferences,
+  onPreferencesChange,
+}: ProfileScreenProps) {
+  const prefs = preferences ?? PREFERENCES_NEUTRES;
   const profil = lireProfil(places);
   const deduites = envieseDeduites(profil);
   const dernier = dernierLieu(places);
@@ -44,6 +57,37 @@ export function ProfileScreen({ places, themes, onApply }: ProfileScreenProps) {
           Profil
         </h1>
       </div>
+
+      {/* Ce qu'on déclare, avant ce qu'on observe — et dans cet ordre pour une raison précise :
+          l'observé est muet tant qu'on n'a pas coché quatre étapes, c'est-à-dire pendant toute
+          la première sortie. Les préférences, elles, agissent dès la première génération. Elles
+          s'enregistrent au fil des gestes, sans bouton : c'est un réglage, pas un itinéraire —
+          l'arbitrage inverse ne valait que pour ce qu'on garde dans « Mes sorties ». */}
+      <section className="flex flex-col gap-4">
+        <div className="flex flex-col gap-1">
+          <h2 className="text-overline uppercase text-ink-soft">Tes préférences</h2>
+          <p className="text-body text-ink-soft [text-wrap:pretty]">
+            Le point de départ de tes sorties. Tu pourras toujours les ajuster au moment de créer.
+          </p>
+        </div>
+
+        <VibeSliders
+          value={prefs.vibe}
+          onChange={(vibe) => onPreferencesChange({ ...prefs, vibe })}
+        />
+
+        <div className="flex flex-col gap-2">
+          <h3 className="text-overline uppercase text-ink-soft">
+            Envies <span className="text-ink-mute">— facultatif</span>
+          </h3>
+          <ThemePicker
+            value={prefs.themes}
+            onChange={(t) => onPreferencesChange({ ...prefs, themes: t })}
+          />
+        </div>
+      </section>
+
+      <div className="border-t-3 border-ink" />
 
       {!profil.etabli ? (
         <NePasEncoreSavoir visites={profil.visites} />
@@ -154,16 +198,16 @@ export function ProfileScreen({ places, themes, onApply }: ProfileScreenProps) {
 
           {/* Le geste qui rend le profil utile. Sans lui, tout ce qui précède ne serait qu'un
               miroir — et un miroir n'a jamais amélioré une soirée. */}
-          {/* `sticky` et non `mt-auto` : celui-ci ne pousse en bas que tant qu'il reste de la
-              place, et le bouton s'est retrouvé coupé par la barre d'onglets dès que la liste
-              des notes a rempli l'écran. C'est le même piège que le « Valider » passé sous la
-              ligne de flottaison — l'action doit rester atteignable sans avoir à chercher.
-              `-mx-6 px-6` pour que l'aplat de papier couvre toute la largeur en défilant. */}
-          <div className="sticky bottom-0 -mx-6 mt-auto flex flex-col gap-2 border-t-3 border-ink bg-paper px-6 pb-1 pt-4">
+          {/* Ancré en bas du flux, et non collant. Il l'a été un temps, parce que le bouton
+              passait sous la barre d'onglets sur une page qui paraissait tenir à l'écran ;
+              depuis que les préférences déclarées l'ont allongée, ce même bandeau masquait en
+              permanence un tiers de la hauteur. Une page manifestement longue se défile — c'est
+              une page qui semble complète qui cache son action. */}
+          <div className="mt-auto flex flex-col gap-2 border-t-3 border-ink pt-4">
             <p className="text-body text-ink-soft [text-wrap:pretty]">
               {dejaApplique
-                ? "Tes envies sont réglées sur tes habitudes. Tu peux les décocher à tout moment."
-                : "On peut partir de ces habitudes pour la prochaine sortie."}
+                ? "Tes réglages suivent déjà tes habitudes. Tu peux les décocher à tout moment."
+                : "Ce sont tes habitudes, pas tes préférences : on peut les reporter dans les réglages de ta prochaine sortie."}
             </p>
             <button
               type="button"

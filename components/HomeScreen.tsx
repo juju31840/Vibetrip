@@ -1,10 +1,13 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import clsx from "clsx";
 import { VibeSliders } from "@/components/VibeSliders";
 import { ModeSelector } from "@/components/ModeSelector";
 import { LocationInput } from "@/components/LocationInput";
 import { ThemePicker } from "@/components/ThemePicker";
+import { CheckIcon } from "@/components/ui/icons";
+import { draftSuitPreferences, type Preferences } from "@/lib/preferences";
 import { Button } from "@/components/ui/Button";
 import { ArrowRightIcon } from "@/components/ui/icons";
 import type {
@@ -63,6 +66,12 @@ interface HomeScreenProps {
    * ne se distingue pas d'un geste sans effet.
    */
   revealThemes?: boolean;
+  /**
+   * Préférences déclarées dans le profil. `null` quand il n'y en a pas : la case n'est alors pas
+   * affichée du tout — un contrôle qui n'aurait rien à appliquer se remarque plus qu'un contrôle
+   * absent, c'est la même règle qui avait tenu l'onglet « Profil » fermé tant qu'il était vide.
+   */
+  preferences?: Preferences | null;
   onDraftChange: (draft: HomeDraft) => void;
   onGenerate: (request: GenerateItineraryRequest) => void;
 }
@@ -72,9 +81,11 @@ export function HomeScreen({
   onDraftChange,
   onGenerate,
   revealThemes = false,
+  preferences = null,
 }: HomeScreenProps) {
   const canGenerate = draft.location !== null;
   const themesRef = useRef<HTMLElement>(null);
+  const suitPreferences = preferences ? draftSuitPreferences(draft, preferences) : false;
 
   // `block: "center"` plutôt que `"start"` : la section est la dernière de la page, l'aligner en
   // haut la collerait au pied fixe. Le défilement est neutralisé sous `prefers-reduced-motion`,
@@ -131,6 +142,41 @@ export function HomeScreen({
           sortie et que les suivants la nuancent. Un filet 3 px, ceux qui séparent les registres
           ailleurs dans le produit. */}
       <div className="border-t-3 border-ink" />
+
+      {/* La case porte sur tout ce qui la suit — curseurs et envies — donc elle les précède.
+          Cocher applique, décocher revient au réglage neutre : symétrique et réversible, alors
+          qu'un bouton n'aurait laissé aucun moyen de revenir en arrière. Et son état n'est pas
+          gardé à part mais **déduit** du brouillon : toucher un curseur la décoche d'elle-même,
+          parce que le réglage a cessé de suivre les préférences. Une case qui resterait cochée
+          en mentant serait pire que pas de case. */}
+      {preferences && (
+        <button
+          type="button"
+          role="checkbox"
+          aria-checked={suitPreferences}
+          onClick={() =>
+            onDraftChange(
+              suitPreferences
+                ? { ...draft, vibe: INITIAL_DRAFT.vibe, themes: [] }
+                : { ...draft, vibe: preferences.vibe, themes: preferences.themes }
+            )
+          }
+          className="flex items-center gap-3 border-2 border-ink px-3.5 py-3 text-left transition-colors hover:bg-paper-2"
+        >
+          <span
+            aria-hidden
+            className={clsx(
+              "flex h-5 w-5 shrink-0 items-center justify-center border-2 border-ink",
+              suitPreferences ? "bg-accent text-paper" : "bg-paper"
+            )}
+          >
+            {suitPreferences && <CheckIcon className="h-3.5 w-3.5" />}
+          </span>
+          <span className="text-[0.9375rem] font-bold uppercase tracking-[0.04em] text-ink">
+            Partir de mes préférences
+          </span>
+        </button>
+      )}
 
       <VibeSliders value={draft.vibe} onChange={(vibe) => onDraftChange({ ...draft, vibe })} />
 
