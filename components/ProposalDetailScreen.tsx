@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { chipClass } from "@/components/ui/chip";
 import { ArrowLeftIcon, CheckIcon } from "@/components/ui/icons";
 import { THEMES, findNearby, themeForType, type ThemeId } from "@/lib/nearby-places";
+import { trajetDepuis, formatTrajet } from "@/lib/walking";
 import type { Itinerary, ItineraryStep } from "@/types/itinerary";
 
 const MapView = dynamic(() => import("@/components/MapView").then((mod) => mod.MapView), {
@@ -95,8 +96,19 @@ export function ProposalDetailScreen({
 
         <ol className="mt-1 flex flex-col">
           {steps.map((step, index) => {
+            const precedente = index > 0 ? steps[index - 1] : undefined;
+            const trajet = precedente ? trajetDepuis(precedente, step) : null;
             return (
               <li key={step.id} className="flex flex-col">
+                {/* Le seul élément de l'écran que le modèle n'a pas écrit : il sort des
+                    coordonnées. C'est aussi celui qui répond à la question qu'on se pose
+                    vraiment devant un parcours — est-ce que ça se fait à pied ? */}
+                {trajet && (
+                  <span className="flex items-center gap-2 py-1 pl-8 text-[0.625rem] font-bold uppercase tracking-[0.1em] text-ink-mute">
+                    <span aria-hidden className="h-3 w-px bg-ink-mute" />
+                    {formatTrajet(trajet)}
+                  </span>
+                )}
                 <StepRow
                   step={step}
                   index={index}

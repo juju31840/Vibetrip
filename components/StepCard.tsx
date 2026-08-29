@@ -13,6 +13,8 @@ const PERIOD_LABELS: Record<ItineraryStep["period"], string> = {
 
 interface StepCardProps {
   step: ItineraryStep;
+  /** Trajet depuis l'étape précédente du même jour — calculé, jamais généré. */
+  trajet?: string | null;
   /** Le lieu a fermé depuis l'enregistrement de l'itinéraire (lib/closed-places.ts). */
   closedOn?: string | null;
   isActive: boolean;
@@ -26,14 +28,25 @@ interface StepCardProps {
  * petites capitales, le nom en grasse condensée. Plus de carte blanche arrondie — c'était l'un
  * des trois traits qui faisaient reconnaître l'interface comme générée.
  */
-export function StepCard({ step, closedOn, isActive, isDone, onSelect, onToggleDone }: StepCardProps) {
+export function StepCard({ step, closedOn, trajet, isActive, isDone, onSelect, onToggleDone }: StepCardProps) {
   return (
-    <div
-      className={clsx(
-        "flex gap-3 border-t-2 border-ink px-1 py-3 transition-colors",
-        isActive && "bg-paper-2"
+    <>
+      {/* Le trajet depuis l'étape précédente. Posé entre deux étapes plutôt que dans l'une
+          d'elles, parce que c'est ce qu'il est : un entre-deux. C'est aussi la seule ligne de
+          l'écran que le modèle n'a pas écrite — elle sort des coordonnées, donc elle ne peut
+          pas sonner comme un gabarit. */}
+      {trajet && (
+        <span className="flex items-center gap-2 pl-9 text-[0.625rem] font-bold uppercase tracking-[0.1em] text-ink-mute">
+          <span aria-hidden className="h-3 w-px bg-ink-mute" />
+          {trajet}
+        </span>
       )}
-    >
+      <div
+        className={clsx(
+          "flex gap-3 border-t-2 border-ink px-1 py-3 transition-colors",
+          isActive && "bg-paper-2"
+        )}
+      >
       {/* Hook de rétention : cocher une étape sur place donne une raison de rouvrir l'app
           pendant la sortie, et pas seulement au moment de la générer. Elle alimente aussi la
           carte personnelle (lib/places-store.ts), qui est la contrepartie du geste. */}
@@ -80,6 +93,7 @@ export function StepCard({ step, closedOn, isActive, isDone, onSelect, onToggleD
         Y aller
       </a>
     </div>
+    </>
   );
 }
 

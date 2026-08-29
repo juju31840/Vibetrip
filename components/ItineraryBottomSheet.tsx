@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Drawer } from "vaul";
 import { StepCard } from "@/components/StepCard";
+import { trajetDepuis, formatTrajet } from "@/lib/walking";
 import type { ItineraryStep } from "@/types/itinerary";
 
 interface ItineraryBottomSheetProps {
@@ -81,17 +82,22 @@ export function ItineraryBottomSheet({
                 <h2 className="mt-3 pb-1.5 font-display text-[1.6rem] uppercase leading-none tracking-[-0.01em] text-ink">
                   Jour {day}
                 </h2>
-                {daySteps.map((step) => (
+                {daySteps.map((step, index) => {
+                  const precedente = index > 0 ? daySteps[index - 1] : undefined;
+                  const trajet = precedente ? trajetDepuis(precedente, step) : null;
+                  return (
                   <StepCard
                     key={step.id}
                     step={step}
+                    trajet={trajet ? formatTrajet(trajet) : null}
                     closedOn={closedSteps?.get(step.placeName)}
                     isActive={step.id === activeStepId}
                     isDone={doneStepIds.includes(step.id)}
                     onSelect={onSelectStep}
                     onToggleDone={onToggleStepDone}
                   />
-                ))}
+                  );
+                })}
               </div>
             ))}
           </div>

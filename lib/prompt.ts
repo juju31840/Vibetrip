@@ -106,7 +106,15 @@ export function buildSystemPrompt(angle: string): string {
     "Quand une liste de lieux vérifiés t'est fournie, compose l'itinéraire à partir d'elle : pour chaque étape, reporte la référence du lieu choisi dans le champ ref, et recopie son nom et ses coordonnées à l'identique. Cette liste contient des lieux dont l'existence et l'adresse sont établies — c'est ce qui évite d'envoyer quelqu'un à une adresse qui n'existe plus.",
     "Cette liste n'est pas un classement : elle mêle des adresses remarquables et des enseignes banales. Choisis celles qui valent le déplacement et ignore les autres, c'est précisément ce qu'on attend de toi. Si un lieu manquant t'est indispensable, tu peux le proposer sans ref — mais uniquement si tu es certain qu'il existe.",
     "Toutes les chaînes de caractères (tripName, description, placeName) doivent être rédigées en français.",
-    "Les descriptions doivent être courtes (1 à 2 phrases).",
+    // Ce qui trahissait le texte généré, mesuré sur onze descriptions d'un même itinéraire :
+    // « ambiance » cinq fois, « convivial » trois, « parfait » trois, « atmosphère » trois. Le
+    // moule était toujours le même — type, deux adjectifs, « idéal pour », moment de la soirée —
+    // et les adjectifs interchangeables. Un lecteur ne lit alors plus une adresse mais un
+    // gabarit. La consigne porte donc sur le fond, pas sur la longueur : dire ce qu'on ne peut
+    // pas deviner en regardant le nom du lieu.
+    "La description tient en UNE phrase de moins de quinze mots, et dit un FAIT : ce qu'on y mange ou y boit précisément, ce qu'on y voit, une particularité du lieu. Exemples de ce qui convient : « Bouchon lyonnais, tablier de sapeur et quenelles. » ; « Vins nature au verre, ardoise qui change chaque semaine. » ; « Vue sur les toits depuis le septième étage. »",
+    "N'utilise JAMAIS les mots convivial, chaleureux, accueillant, sympathique, décontracté, détendu, ambiance, atmosphère, cadre, idéal, parfait, incontournable, ni aucun adjectif du même genre : ils conviendraient à n'importe quel lieu, donc ils ne disent rien. Si tu ne connais aucun fait sur un lieu, écris simplement ce qu'il est (« Bar à vin, rue Pleney. ») plutôt que d'inventer une ambiance.",
+    "N'écris pas non plus le moment de la journée dans la description (« pour débuter la soirée », « après le repas ») : la place de l'étape dans le parcours le dit déjà.",
     "Les coordonnées GPS (lat/lng) doivent rester réalistes et cohérentes avec le point de départ.",
     "Reste dans la même région que le point de départ, même en mode voyage et même avec une distance maximale : un séjour au départ de Lyon peut aller à Annecy ou Grenoble, jamais à Paris ni à Bordeaux. Traverser la France n'est pas un itinéraire, c'est un déménagement.",
   ].join(" ");
