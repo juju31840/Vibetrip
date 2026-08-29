@@ -1190,6 +1190,43 @@ hauteur en permanence. Une page manifestement longue se défile — c'est une pa
 complète qui cache son action. Le correctif juste dépend donc de la longueur de la page, pas du
 composant.
 
+### Trois registres, et une fiche (29/08/2026, soir)
+
+Reproche de l'utilisateur, fondé : les préférences déclarées ressemblaient à **une seconde copie
+de l'écran « Créer »**, et « Ce qu'on a compris » en paraissait la suite — un filet, même à 3 px,
+se lit comme une respiration à l'intérieur d'une même section, jamais comme un changement de
+chapitre. L'écran tient désormais trois registres visuels, et la distinction porte du sens :
+
+1. **La fiche** — aplat d'encre, seul bloc entièrement en encre pleine hors de la barre d'onglets.
+   Ce qu'on **est**. Photo, prénom, âge, et la ligne « Sort à Lyon · Tours ».
+2. **Les préférences** — papier assombri, encadrées : le registre du formulaire. Ce qu'on **veut**.
+   Elles portent forcément les mêmes contrôles que « Créer » puisque ce sont les mêmes réglages ;
+   ce qui les distingue est donc le fond, le cadre, et une phrase qui dit à quoi elles servent.
+3. **Ce qu'on a compris** — papier nu, précédé d'une **bande d'encre pleine largeur** portant le
+   titre en réserve. Ce qu'on **fait**, mesuré et jamais déclaré.
+
+**L'identité ne change aucune proposition, et c'est assumé** (`lib/identity.ts`). La règle du
+projet — ne rien demander qui ne change rien — visait les *questionnaires de goûts*, qui
+prétendent servir à quelque chose. Un prénom et une photo ne prétendent à rien : ils font qu'un
+écran de réglages devienne un endroit à soi. L'âge n'est aujourd'hui branché sur rien non plus.
+
+**La photo est réduite avant d'être écrite** (320 px, JPEG 0,82, ~25 Ko). Ce n'est pas cosmétique :
+`localStorage` plafonne vers 5 Mo et une photo de téléphone en `data:` URI en pèse 4 à 8 — elle
+ferait échouer non seulement son propre enregistrement mais **celui des itinéraires et des lieux
+visités**, qui partagent le même quota. Recadrage centré carré, sinon les visages s'étirent.
+
+**Les villes de référence remplacent les raccourcis du champ de départ.** Celui-ci proposait les
+six communes les plus peuplées de France, c'est-à-dire les villes de tout le monde et de
+personne : qui sort à Tours et à Angers n'a que faire de Marseille en un geste. Quatre au plus —
+au-delà ce n'est plus une référence mais une liste, et les raccourcis prendraient deux lignes.
+
+**Défaut trouvé à l'écran et corrigé** : la case « Partir de mes préférences » s'affichait **déjà
+cochée** devant quelqu'un qui n'avait réglé que ses villes. Elle ne mentait pas — le brouillon
+suivait bien des préférences par ailleurs neutres — mais elle avait l'air d'un état actif que
+cocher ou décocher ne changeait pas. Les villes sont donc sorties de `preferencesUtiles` : elles
+sont une préférence, mais elles agissent **ailleurs et toutes seules**, sur les raccourcis. Ce que
+la case peut appliquer et ce qui est une préférence ne sont pas la même liste.
+
 **Reste ouvert** : le coaching (« tu n'as jamais rien fait rive droite ») demande quelques dizaines
 de points, donc plus tard. Et les goûts n'entrent dans le prompt que par le levier des envies
 existant — aucune pondération propre n'a été ajoutée, précisément pour que l'effet reste lisible.

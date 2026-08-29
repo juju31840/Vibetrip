@@ -14,6 +14,7 @@ import { ErrorState } from "@/components/ErrorState";
 import { ResultScreen } from "@/components/ResultScreen";
 import { Toast } from "@/components/ui/Toast";
 import { useGenerateItinerary } from "@/hooks/useGenerateItinerary";
+import { ecrireIdentite, lireIdentite, IDENTITE_VIDE, type Identity } from "@/lib/identity";
 import {
   ecrirePreferences,
   lirePreferences,
@@ -60,8 +61,16 @@ export default function Page() {
    */
   const [preferences, setPreferences] = useState<Preferences | null>(null);
 
+  const [identity, setIdentity] = useState<Identity>(IDENTITE_VIDE);
+
   useEffect(() => {
     setPreferences(lirePreferences());
+    setIdentity(lireIdentite());
+  }, []);
+
+  const saveIdentity = useCallback((next: Identity) => {
+    setIdentity(next);
+    ecrireIdentite(next);
   }, []);
 
   const savePreferences = useCallback((prefs: Preferences) => {
@@ -238,6 +247,7 @@ export default function Page() {
             onGenerate={generate}
             revealThemes={revealThemes > 0}
             preferences={preferencesUtiles(preferences) ? preferences : null}
+            preferredCities={preferences?.cities ?? []}
           />
         )}
         {tab === "saved" && <SavedScreen items={saved} onOpen={setOpenedId} onRemove={remove} />}
@@ -261,6 +271,8 @@ export default function Page() {
             onApply={applyTastes}
             preferences={preferences}
             onPreferencesChange={savePreferences}
+            identity={identity}
+            onIdentityChange={saveIdentity}
           />
         )}
         <BottomNav

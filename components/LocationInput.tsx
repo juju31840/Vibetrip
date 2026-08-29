@@ -18,11 +18,17 @@ interface LocationInputProps {
    */
   cityText: string;
   onChange: (next: { value: LocationValue | null; cityText: string }) => void;
+  /**
+   * Villes de référence de l'utilisateur, proposées à la place des six communes les plus
+   * peuplées. Celles-ci restent le repli : elles valent mieux que rien pour qui n'a rien
+   * déclaré, mais ce sont les villes de tout le monde et de personne.
+   */
+  suggestedCities?: string[];
 }
 
 type GeoStatus = "idle" | "locating" | "denied" | "unavailable" | "insecure";
 
-export function LocationInput({ value, cityText, onChange }: LocationInputProps) {
+export function LocationInput({ value, cityText, onChange , suggestedCities = [] }: LocationInputProps) {
   const [status, setStatus] = useState<GeoStatus>("idle");
 
   const suggestions = useMemo(() => matchCities(cityText), [cityText]);
@@ -96,7 +102,13 @@ export function LocationInput({ value, cityText, onChange }: LocationInputProps)
           {/* Propositions : un raccourci, jamais une restriction — n'importe quelle commune que
               le géocodage sait résoudre fonctionne, et la saisie reste libre. */}
           <CityChips
-            cities={suggestions.length > 0 ? suggestions : SUGGESTED_CITIES}
+            cities={
+              suggestions.length > 0
+                ? suggestions
+                : suggestedCities.length > 0
+                  ? suggestedCities
+                  : SUGGESTED_CITIES
+            }
             selected={cityText.trim()}
             onSelect={selectCity}
           />

@@ -72,6 +72,8 @@ interface HomeScreenProps {
    * absent, c'est la même règle qui avait tenu l'onglet « Profil » fermé tant qu'il était vide.
    */
   preferences?: Preferences | null;
+  /** Villes de référence, qui remplacent les raccourcis génériques du champ de départ. */
+  preferredCities?: string[];
   onDraftChange: (draft: HomeDraft) => void;
   onGenerate: (request: GenerateItineraryRequest) => void;
 }
@@ -82,6 +84,7 @@ export function HomeScreen({
   onGenerate,
   revealThemes = false,
   preferences = null,
+  preferredCities = [],
 }: HomeScreenProps) {
   const canGenerate = draft.location !== null;
   const themesRef = useRef<HTMLElement>(null);
@@ -134,6 +137,7 @@ export function HomeScreen({
           value={draft.location}
           cityText={draft.cityText}
           onChange={({ value, cityText }) => onDraftChange({ ...draft, location: value, cityText })}
+          suggestedCities={preferredCities}
         />
       </section>
 

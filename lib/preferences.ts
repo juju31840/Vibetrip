@@ -23,12 +23,19 @@ const CLE = "vibetrip.preferences.v1";
 export interface Preferences {
   vibe: VibeSettings;
   themes: ThemeId[];
+  /**
+   * Villes où l'on sort habituellement. Elles remplacent les six raccourcis du champ de départ
+   * — qui sont les communes les plus peuplées, c'est-à-dire les villes de tout le monde et de
+   * personne. Quelqu'un qui sort à Tours et à Angers n'a que faire de Marseille en un geste.
+   */
+  cities: string[];
 }
 
 /** Le milieu de course sur les trois axes : la valeur d'un curseur auquel on n'a pas touché. */
 export const PREFERENCES_NEUTRES: Preferences = {
   vibe: { budget: 50, ambiance: 50, distance: 50 },
   themes: [],
+  cities: [],
 };
 
 export function lirePreferences(): Preferences | null {
@@ -38,7 +45,12 @@ export function lirePreferences(): Preferences | null {
     if (!brut) return null;
     const parsed = JSON.parse(brut) as Partial<Preferences>;
     if (!parsed?.vibe) return null;
-    return { vibe: parsed.vibe, themes: Array.isArray(parsed.themes) ? parsed.themes : [] };
+    return {
+      vibe: parsed.vibe,
+      themes: Array.isArray(parsed.themes) ? parsed.themes : [],
+      // Absent des enregistrements écrits avant l'ajout des villes : on ne les rejette pas.
+      cities: Array.isArray(parsed.cities) ? parsed.cities : [],
+    };
   } catch {
     return null;
   }
@@ -63,18 +75,24 @@ export function effacerPreferences(): void {
 }
 
 /**
- * Des préférences « renseignées » ne sont pas des préférences **neutres**.
+ * Y a-t-il quelque chose que la case « Partir de mes préférences » puisse réellement appliquer ?
  *
- * Ouvrir le profil, effleurer un curseur et le remettre où il était écrirait un enregistrement
- * qui ne dit rien. L'écran de réglages proposerait alors de partir de préférences identiques à
- * ses valeurs par défaut — une case à cocher sans effet, ce qui est pire qu'une case absente.
+ * Deux raisons de répondre non, et elles sont différentes :
+ *
+ * 1. **Des préférences renseignées ne sont pas des préférences neutres.** Ouvrir le profil,
+ *    effleurer un curseur et le remettre où il était écrirait un enregistrement qui ne dit rien ;
+ *    la case proposerait alors d'appliquer les valeurs par défaut. Une case sans effet est pire
+ *    qu'une case absente.
+ * 2. **Les villes n'entrent pas dans ce compte**, bien qu'elles soient une préférence. Elles
+ *    agissent ailleurs et toutes seules — elles remplacent les raccourcis du champ de départ.
+ *    Les compter ici afficherait une case *déjà cochée* devant quelqu'un qui n'a réglé que ses
+ *    villes, et que cocher ou décocher ne changerait rien : elle aurait l'air d'un état actif
+ *    sans l'être.
  */
 export function preferencesUtiles(prefs: Preferences | null): boolean {
   if (!prefs) return false;
   const { budget, ambiance, distance } = prefs.vibe;
-  return (
-    prefs.themes.length > 0 || budget !== 50 || ambiance !== 50 || distance !== 50
-  );
+  return prefs.themes.length > 0 || budget !== 50 || ambiance !== 50 || distance !== 50;
 }
 
 /** Le brouillon suit-il déjà les préférences ? Sert à afficher la case cochée, sans mentir. */
