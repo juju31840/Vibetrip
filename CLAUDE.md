@@ -478,9 +478,18 @@ ignorés (musée en étape « Soir »), types parfois incohérents. Le prompt n'
 **Coaching à partir de la carte** : « tu n'as jamais rien fait rive droite », « tu prends toujours
 des bars ». N'a de sens qu'une fois quelques dizaines de points posés — donc après, pas avant.
 
-**Surface area check à faire.** En deux jours se sont ajoutés les propositions, la retouche, les
-thèmes, la carte. Chaque ajout se justifie isolément, mais l'écran de détail porte beaucoup.
-Avant d'ajouter le profil, regarder ce qu'on peut **retirer**.
+**Surface area check : premier passage fait** (29/08/2026), au moment d'ajouter le profil — et il
+a immédiatement servi. Il a fait apparaître un doublon que l'ajout venait de créer : « Ma carte »
+portait des barres « Ce que tu fais » par **type**, le profil des barres par **thème** — deux
+découpages du même fait, au même dessin, dans deux onglets voisins. Le bloc de « Ma carte » est
+retiré : le profil dit la même chose dans l'unité qui **agit** sur les propositions, et
+l'accompagne d'un geste. La carte redit ce qu'elle est — où l'on est allé, et combien.
+
+Mesure de la concentration : `ProposalDetailScreen` porte **12 contrôles**, contre 6 pour
+« Ma carte » et « Mes sorties », 4 pour les propositions, 2 ailleurs. C'est bien là que la surface
+s'est accumulée (retour, rétablir l'origine, valider, sélection d'étape, « Changer » par étape,
+six thèmes, choix d'un lieu). Chaque élément se justifie isolément ; le prochain retrait à
+examiner est là, pas ailleurs.
 
 ## Design system (étape 4bis) — direction « Riso », en place
 

@@ -29,9 +29,6 @@ const TYPE_LABELS: Record<PlaceType, string> = {
   other: "Autres",
 };
 
-/** Au-delà, la répartition cesse d'être lisible et redevient une liste. */
-const TOP_TYPES = 4;
-
 /** Lieux dont la commune n'a pas pu être résolue (géocodage indisponible). */
 const UNKNOWN_CITY = "Ailleurs";
 
@@ -215,8 +212,11 @@ export function MyMapScreen({
           <CityItineraries city={zone} items={cityItineraries} onOpen={onOpenItinerary} />
         )}
 
-        <TypeBreakdown places={shown} />
-
+        {/* La répartition par type vivait ici. Retirée le 29/08/2026 : le profil dit la même
+            chose en mieux — par **thème**, c'est-à-dire dans l'unité qui agit sur les
+            propositions, et accompagnée d'un geste. Deux découpages du même fait, au même
+            dessin, dans deux onglets voisins, c'était de la surface pour rien. Cette carte
+            redit ce qu'elle est : où l'on est allé, et combien. */}
         <section className="flex flex-col">
           <h2 className="border-b-2 border-ink pb-1.5 text-overline uppercase text-ink-soft">
             {isOverview ? "Tous les lieux" : zone}
@@ -370,53 +370,6 @@ function CityItineraries({
   );
 }
 
-/**
- * La répartition par type — le versant « journal » de la carte : ce qu'on fait vraiment, mesuré
- * plutôt que déclaré. Barres d'une seule encre et non une par type : douze couleurs seraient la
- * même erreur que celle déjà corrigée sur les marqueurs, un semis qu'on ne lit plus.
- *
- * Masquée tant qu'il n'y a **rien à comparer** : trois types à un passage chacun donnaient trois
- * barres pleines identiques, ce qui n'apprend rien et ressemble à un affichage cassé.
- */
-function TypeBreakdown({ places }: { places: VisitedPlace[] }) {
-  const counts = new Map<PlaceType, number>();
-  for (const place of places) {
-    counts.set(place.type, (counts.get(place.type) ?? 0) + place.visits.length);
-  }
-
-  const ranked = [...counts.entries()].sort(([, a], [, b]) => b - a).slice(0, TOP_TYPES);
-  if (ranked.length < 2) return null;
-
-  const highest = ranked[0]![1];
-  const lowest = ranked[ranked.length - 1]![1];
-  if (highest === lowest) return null;
-
-  return (
-    <section className="flex flex-col">
-      <h2 className="border-b-2 border-ink pb-1.5 text-overline uppercase text-ink-soft">
-        Ce que tu fais
-      </h2>
-      <ul className="flex flex-col gap-2 pt-2.5">
-        {ranked.map(([type, count]) => (
-          <li key={type} className="flex items-center gap-2.5">
-            <span className="w-24 shrink-0 truncate text-[0.6875rem] font-bold uppercase tracking-[0.06em] text-ink-soft">
-              {TYPE_LABELS[type]}
-            </span>
-            <span className="h-3 flex-1 border-2 border-ink">
-              <span
-                className="block h-full bg-blue"
-                style={{ width: `${Math.round((count / highest) * 100)}%` }}
-              />
-            </span>
-            <span className="w-5 shrink-0 text-right text-caption font-bold tabular-nums text-ink">
-              {count}
-            </span>
-          </li>
-        ))}
-      </ul>
-    </section>
-  );
-}
 
 /**
  * L'état vide dit quel geste remplit la carte. « Aucun lieu » n'apprendrait rien : rien dans
