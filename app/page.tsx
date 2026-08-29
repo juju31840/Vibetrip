@@ -14,6 +14,7 @@ import { ResultScreen } from "@/components/ResultScreen";
 import { Toast } from "@/components/ui/Toast";
 import { useGenerateItinerary } from "@/hooks/useGenerateItinerary";
 import { noteVisit, rateStep } from "@/lib/closed-places";
+import { marquerNote } from "@/lib/ratings-store";
 import { useSavedItineraries } from "@/hooks/useSavedItineraries";
 import { useVisitedPlaces } from "@/hooks/useVisitedPlaces";
 import type { SavedItinerary } from "@/lib/storage";
@@ -52,7 +53,7 @@ export default function Page() {
    * Le lieu qu'on vient de cocher, pour que la confirmation puisse en demander une note. C'est
    * le seul moment où la question tombe juste : on vient de dire qu'on y était.
    */
-  const [aNoter, setANoter] = useState<ItineraryStep | null>(null);
+  const [aNoter, setANoter] = useState<{ itineraryId: string; step: ItineraryStep } | null>(null);
 
   // La confirmation s'efface seule. Le nettoyage du minuteur est indispensable : sans lui, deux
   // validations rapprochées laisseraient le premier minuteur masquer le second message.
@@ -110,7 +111,7 @@ export default function Page() {
         // remonter les bons lieux dans les propositions quand il y aura du monde.
         void noteVisit(step);
         setToast(`${step.placeName} — ajouté à ta carte`);
-        setANoter(step);
+        setANoter({ itineraryId: entry.id, step });
       }
     },
     [toggleStepDone, recordVisit, forgetVisit]
@@ -212,7 +213,10 @@ export default function Page() {
           onRate={
             aNoter
               ? (note) => {
-                  void rateStep(aNoter, note);
+                  void rateStep(aNoter.step, note);
+                  // Mémorisé localement, sans quoi « Mes sorties » redemanderait le même avis :
+                  // la base ne retient aucun registre de qui a noté quoi.
+                  marquerNote(aNoter.itineraryId, aNoter.step.id);
                   // La question posée a reçu sa réponse : on remercie et on s'efface.
                   setToast("Merci, c'est noté");
                   setANoter(null);

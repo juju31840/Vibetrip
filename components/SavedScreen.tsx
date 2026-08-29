@@ -1,5 +1,10 @@
 "use client";
 
+import { useMemo, useState } from "react";
+import { rateStep } from "@/lib/closed-places";
+import { estNote, marquerNote } from "@/lib/ratings-store";
+import type { ItineraryStep } from "@/types/itinerary";
+
 import type { SavedItinerary } from "@/lib/storage";
 import { MODE_LABELS } from "@/lib/trip-modes";
 
@@ -35,7 +40,10 @@ export function SavedScreen({ items, onOpen, onRemove }: SavedScreenProps) {
       {items.length === 0 ? (
         <EmptyState />
       ) : (
-        <SavedList items={items} onOpen={onOpen} onRemove={onRemove} />
+        <>
+          <ANoter items={items} />
+          <SavedList items={items} onOpen={onOpen} onRemove={onRemove} />
+        </>
       )}
     </div>
   );
@@ -107,4 +115,70 @@ function formatSavedAt(savedAt: string): string {
   if (sameDay) return "aujourd'hui";
 
   return new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "short" }).format(date);
+}
+
+/**
+ * Le rattrapage : les lieux où l'on est allé mais qu'on n'a pas notés.
+ *
+ * La note est demandée au moment où l'on coche, ce qui est le bon moment — mais on est alors
+ * dehors, souvent pressé, et on passe. Sans seconde chance, l'avis est perdu pour de bon.
+ *
+ * Ici plutôt qu'ailleurs parce que « Mes sorties » est l'écran où l'on revient *après*, au calme.
+ * Et en tête de liste plutôt qu'accroché à chaque sortie : c'est un rappel ponctuel, pas une
+ * propriété de l'itinéraire — accroché à chacun, il serait devenu du bruit permanent.
+ *
+ * Le bloc disparaît dès qu'il n'y a plus rien à noter, sans occuper de place vide.
+ */
+function ANoter({ items }: { items: SavedItinerary[] }) {
+  const [faits, setFaits] = useState<string[]>([]);
+
+  const enAttente = useMemo(() => {
+    const liste: { itineraryId: string; step: ItineraryStep }[] = [];
+    for (const item of items) {
+      for (const step of item.itinerary.steps) {
+        if (!item.doneStepIds.includes(step.id)) continue;
+        if (estNote(item.id, step.id)) continue;
+        liste.push({ itineraryId: item.id, step });
+      }
+    }
+    // Les plus récentes d'abord : on se souvient mieux d'hier soir que du mois dernier.
+    return liste.reverse().slice(0, 4);
+  }, [items]);
+
+  const restants = enAttente.filter(({ itineraryId, step }) => !faits.includes(`${itineraryId}:${step.id}`));
+  if (restants.length === 0) return null;
+
+  return (
+    <section className="mt-5 border-2 border-ink">
+      <h2 className="border-b-2 border-ink bg-ink px-3 py-2 text-overline uppercase text-paper">
+        Tu y es allé — ton avis&nbsp;?
+      </h2>
+      <ul className="flex flex-col">
+        {restants.map(({ itineraryId, step }) => (
+          <li key={`${itineraryId}:${step.id}`} className="flex flex-col gap-1.5 border-b-2 border-ink px-3 py-2.5 last:border-b-0">
+            <span className="truncate font-display text-[1.1rem] uppercase leading-none tracking-[-0.01em] text-ink">
+              {step.placeName}
+            </span>
+            <span className="flex justify-between">
+              {[1, 2, 3, 4, 5].map((valeur) => (
+                <button
+                  key={valeur}
+                  type="button"
+                  aria-label={`Noter ${step.placeName} ${valeur} sur 5`}
+                  onClick={() => {
+                    void rateStep(step, valeur);
+                    marquerNote(itineraryId, step.id);
+                    setFaits((actuels) => [...actuels, `${itineraryId}:${step.id}`]);
+                  }}
+                  className="px-2 text-[1.6rem] leading-none text-paper-3 transition-colors hover:text-accent"
+                >
+                  ★
+                </button>
+              ))}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
 }

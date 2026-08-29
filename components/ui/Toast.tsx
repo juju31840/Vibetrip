@@ -48,19 +48,22 @@ export function Toast({ message, onRate }: ToastProps) {
           </span>
         </span>
 
+        {/* La demande de note occupe une ligne à elle, en grand : glissée à côté du message elle
+            passait inaperçue, et un geste qu'on ne voit pas n'existe pas. Les étoiles sont
+            dimensionnées comme des cibles tactiles, pas comme du texte. */}
         {onRate && (
-          <span className="flex items-center gap-2 border-t border-paper/25 pt-2">
-            <span className="text-[0.625rem] font-bold uppercase tracking-[0.1em] text-paper/75">
+          <span className="flex flex-col gap-1.5 border-t-2 border-paper/30 pt-2.5">
+            <span className="text-[0.75rem] font-bold uppercase tracking-[0.08em] text-paper">
               C&apos;était comment&nbsp;?
             </span>
-            <span className="flex">
+            <span className="flex justify-between">
               {[1, 2, 3, 4, 5].map((valeur) => (
                 <button
                   key={valeur}
                   type="button"
                   aria-label={`Noter ${valeur} sur 5`}
                   onClick={() => onRate(valeur)}
-                  className="px-[3px] text-[1.125rem] leading-none text-paper/45 transition-colors hover:text-paper"
+                  className="px-2 py-0.5 text-[1.75rem] leading-none text-paper/50 transition-colors hover:text-paper"
                 >
                   ★
                 </button>
