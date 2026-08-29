@@ -3,8 +3,6 @@
 import clsx from "clsx";
 import { CheckIcon, PinIcon } from "@/components/ui/icons";
 import { buildMapsUrl } from "@/lib/maps";
-import { useState } from "react";
-import { rateStep } from "@/lib/closed-places";
 import type { ItineraryStep } from "@/types/itinerary";
 
 const PERIOD_LABELS: Record<ItineraryStep["period"], string> = {
@@ -81,9 +79,6 @@ export function StepCard({ step, closedOn, trajet, isActive, isDone, onSelect, o
         </span>
         <span className="mt-1 text-body text-ink-soft">{step.description}</span>
         <VerificationNote step={step} closedOn={closedOn} />
-      {/* La note ne s'ouvre qu'une fois l'étape cochée : on ne note pas un endroit où l'on n'est
-          pas allé, et la proposer avant en ferait un jugement sur pièce plutôt qu'un souvenir. */}
-      {isDone && <Etoiles step={step} />}
       </button>
 
       {/* Fermeture de la boucle : l'utilisateur se rend réellement sur place. Ouvert dans un
@@ -154,59 +149,6 @@ function VerificationNote({
   return (
     <span className="mt-1.5 w-fit border-b border-dotted border-ink-mute pb-0.5 text-[0.6875rem] font-bold uppercase tracking-[0.08em] text-ink-mute">
       Adresse à confirmer sur place
-    </span>
-  );
-}
-
-/**
- * La note, de une à cinq étoiles.
- *
- * C'est le seul signal que l'application peut construire et qu'aucun moteur généraliste ne
- * possède : une appréciation donnée par quelqu'un qui s'est réellement rendu sur place. Elle
- * alimente le classement des propositions suivantes — un lieu bien noté remonte.
- *
- * Une fois donnée elle ne se reprend pas, et l'interface le montre plutôt que de l'expliquer :
- * les étoiles cessent simplement d'être des boutons. Permettre de se raviser demanderait de
- * retenir qui a noté quoi, donc de tenir un registre nominatif — exactement ce qu'on s'interdit
- * ici, où la base n'additionne qu'une somme et un nombre.
- */
-function Etoiles({ step }: { step: ItineraryStep }) {
-  const [note, setNote] = useState<number | null>(null);
-
-  if (note !== null) {
-    return (
-      <span className="mt-2 text-[0.6875rem] font-bold uppercase tracking-[0.1em] text-ink-mute">
-        <span className="text-accent">{"\u2605".repeat(note)}</span>
-        <span className="text-paper-3">{"\u2605".repeat(5 - note)}</span>
-        <span className="ml-2">merci</span>
-      </span>
-    );
-  }
-
-  return (
-    <span className="mt-2 flex items-center gap-2">
-      <span className="text-[0.6875rem] font-bold uppercase tracking-[0.1em] text-ink-mute">
-        Ton avis
-      </span>
-      <span className="flex">
-        {[1, 2, 3, 4, 5].map((valeur) => (
-          <button
-            key={valeur}
-            type="button"
-            aria-label={`Noter ${valeur} sur 5`}
-            onClick={(event) => {
-              // La carte entière est cliquable : sans cela, noter sélectionnerait aussi l'étape
-              // et recadrerait la carte sous le doigt.
-              event.stopPropagation();
-              setNote(valeur);
-              void rateStep(step, valeur);
-            }}
-            className="px-[3px] text-[1.0625rem] leading-none text-paper-3 transition-colors hover:text-accent"
-          >
-            {"\u2605"}
-          </button>
-        ))}
-      </span>
     </span>
   );
 }

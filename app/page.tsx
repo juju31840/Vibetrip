@@ -13,11 +13,11 @@ import { ErrorState } from "@/components/ErrorState";
 import { ResultScreen } from "@/components/ResultScreen";
 import { Toast } from "@/components/ui/Toast";
 import { useGenerateItinerary } from "@/hooks/useGenerateItinerary";
-import { noteVisit } from "@/lib/closed-places";
+import { noteVisit, rateStep } from "@/lib/closed-places";
 import { useSavedItineraries } from "@/hooks/useSavedItineraries";
 import { useVisitedPlaces } from "@/hooks/useVisitedPlaces";
 import type { SavedItinerary } from "@/lib/storage";
-import type { Itinerary } from "@/types/itinerary";
+import type { Itinerary, ItineraryStep } from "@/types/itinerary";
 
 /** Durée d'affichage de la confirmation : assez pour être lue, assez court pour ne pas gêner. */
 const TOAST_MS = 2600;
@@ -48,12 +48,20 @@ export default function Page() {
   /** Itinéraire de l'historique ouvert en plein écran. */
   const [openedId, setOpenedId] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+  /**
+   * Le lieu qu'on vient de cocher, pour que la confirmation puisse en demander une note. C'est
+   * le seul moment où la question tombe juste : on vient de dire qu'on y était.
+   */
+  const [aNoter, setANoter] = useState<ItineraryStep | null>(null);
 
   // La confirmation s'efface seule. Le nettoyage du minuteur est indispensable : sans lui, deux
   // validations rapprochées laisseraient le premier minuteur masquer le second message.
   useEffect(() => {
     if (!toast) return;
-    const timer = setTimeout(() => setToast(null), TOAST_MS);
+    const timer = setTimeout(() => {
+      setToast(null);
+      setANoter(null);
+    }, TOAST_MS);
     return () => clearTimeout(timer);
   }, [toast]);
 
@@ -102,6 +110,7 @@ export default function Page() {
         // remonter les bons lieux dans les propositions quand il y aura du monde.
         void noteVisit(step);
         setToast(`${step.placeName} — ajouté à ta carte`);
+        setANoter(step);
       }
     },
     [toggleStepDone, recordVisit, forgetVisit]
@@ -197,7 +206,21 @@ export default function Page() {
   return (
     <>
       {renderScreen()}
-      {toast && <Toast message={toast} />}
+      {toast && (
+        <Toast
+          message={toast}
+          onRate={
+            aNoter
+              ? (note) => {
+                  void rateStep(aNoter, note);
+                  // La question posée a reçu sa réponse : on remercie et on s'efface.
+                  setToast("Merci, c'est noté");
+                  setANoter(null);
+                }
+              : undefined
+          }
+        />
+      )}
     </>
   );
 }
