@@ -68,3 +68,33 @@ export async function findClosedSteps(steps: ItineraryStep[]): Promise<EtapeFerm
     return [];
   }
 }
+
+/**
+ * Signale qu'on est allé dans un lieu — le signal maison qui remplace les notes.
+ *
+ * Il n'enregistre **qu'un compteur par lieu** : ni identifiant, ni date, ni trace individuelle.
+ * On cherche à savoir qu'un endroit marche, pas qui y va. C'est aussi ce qui rend le geste
+ * acceptable sans rien demander à personne.
+ *
+ * Sa valeur est différée et assumée : à zéro visite partout, il ne change rien. Il faut du monde
+ * pour qu'il classe — mais commencer à compter aujourd'hui, c'est avoir de quoi classer dans un
+ * mois. Ne pas compter, c'est n'avoir jamais rien.
+ *
+ * Jamais attendu par l'appelant : cocher une étape doit rester instantané.
+ */
+export async function noteVisit(step: { placeName: string; location: { lat: number; lng: number } }): Promise<void> {
+  if (!URL_BASE || !CLE) return;
+  try {
+    await fetch(`${URL_BASE}/rest/v1/rpc/noter_visite`, {
+      method: "POST",
+      headers: { apikey: CLE, Authorization: `Bearer ${CLE}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        p_nom: step.placeName,
+        p_lat: step.location.lat,
+        p_lng: step.location.lng,
+      }),
+    });
+  } catch {
+    // Statistique d'usage : son échec n'a aucune conséquence pour l'utilisateur.
+  }
+}

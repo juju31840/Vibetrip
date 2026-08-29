@@ -13,6 +13,7 @@ import { ErrorState } from "@/components/ErrorState";
 import { ResultScreen } from "@/components/ResultScreen";
 import { Toast } from "@/components/ui/Toast";
 import { useGenerateItinerary } from "@/hooks/useGenerateItinerary";
+import { noteVisit } from "@/lib/closed-places";
 import { useSavedItineraries } from "@/hooks/useSavedItineraries";
 import { useVisitedPlaces } from "@/hooks/useVisitedPlaces";
 import type { SavedItinerary } from "@/lib/storage";
@@ -97,6 +98,9 @@ export default function Page() {
         forgetVisit(entry.id, stepId);
       } else {
         recordVisit(entry.id, step);
+        // Le même geste alimente le compteur collectif, sans attendre : c'est lui qui fera
+        // remonter les bons lieux dans les propositions quand il y aura du monde.
+        void noteVisit(step);
         setToast(`${step.placeName} — ajouté à ta carte`);
       }
     },
