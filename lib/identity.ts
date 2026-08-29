@@ -41,13 +41,25 @@ export function lireIdentite(): Identity {
   }
 }
 
-export function ecrireIdentite(identity: Identity): void {
-  if (typeof window === "undefined") return;
+/**
+ * Rend `false` quand l'écriture a échoué — et l'appelant doit s'en servir.
+ *
+ * C'est le seul magasin de l'application dont l'échec serait **invisible et trompeur** : une
+ * photo refusée par le quota reste affichée à l'écran, portée par l'état React, et ne disparaît
+ * qu'au rechargement suivant. Quelqu'un croirait l'avoir enregistrée et la retrouverait
+ * effacée sans explication. Partout ailleurs (itinéraires, lieux visités) un échec silencieux
+ * est sans conséquence, parce que rien ne donne à croire que c'était acquis.
+ *
+ * Le quota est plafonné vers 5 Mo et **partagé** avec les itinéraires et les lieux visités : un
+ * refus ici est le signe que l'espace manque pour tout le reste.
+ */
+export function ecrireIdentite(identity: Identity): boolean {
+  if (typeof window === "undefined") return false;
   try {
     window.localStorage.setItem(CLE, JSON.stringify(identity));
+    return true;
   } catch {
-    // Quota dépassé — la photo en est la seule cause plausible. Le reste de l'application
-    // fonctionne, et l'écran le signalera plutôt que d'échouer en silence.
+    return false;
   }
 }
 

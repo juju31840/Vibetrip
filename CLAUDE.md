@@ -1248,6 +1248,30 @@ la case peut appliquer et ce qui est une préférence ne sont pas la même liste
 de points, donc plus tard. Et les goûts n'entrent dans le prompt que par le levier des envies
 existant — aucune pondération propre n'a été ajoutée, précisément pour que l'effet reste lisible.
 
+## Contrôle avant test utilisateur (29/08/2026)
+
+Passage fait avant de confier l'application à des proches. Tout est mesuré en production, rien
+n'est supposé.
+
+| Contrôle | Résultat |
+|---|---|
+| Génération réelle (Lyon · soirée) | 3 propositions, **16/16 étapes confirmées**, 9 s |
+| Quota par appareil | `VIBETRIP_RATE_LIMIT` bien posé en prod — **7 appels sans blocage**, la valeur par défaut de 5 aurait bloqué un testeur en quelques minutes |
+| Message de quota atteint | clair, en français, sans jargon |
+| Écrans vides (sorties, carte, profil) | tous les trois expliquent quoi faire, aucun n'est cassé |
+| Socle | 575 206 lieux, 33 fermetures détectées, **2,5 % sans thème** (seuil d'alerte à 5 %) |
+| `pg_cron` | la mesure de santé du jour est inscrite — la collecte tourne sans session ouverte |
+| Jeton Foursquare | expire le **26/09/2026** ; la routine alerte à 8 jours |
+
+**Un seul défaut trouvé, et corrigé** : l'échec d'écriture de la photo était **silencieux et
+trompeur**. Refusée par le quota, elle restait affichée — portée par l'état React — et ne
+disparaissait qu'au rechargement suivant : on croyait l'avoir enregistrée et on la retrouvait
+effacée sans explication. `ecrireIdentite` rend désormais un booléen, et l'écran le dit.
+
+C'est le seul magasin de l'application dont l'échec méritait d'être remonté. Partout ailleurs
+(itinéraires, lieux visités) le silence est sans conséquence, **parce que rien ne donne à croire
+que c'était acquis** — la distinction est là, pas dans la gravité technique.
+
 ## Points ouverts (non bloquants)
 
 - Fichier vide parasite `CLAUDE` : **supprimé** (27/08/2026)

@@ -70,7 +70,11 @@ export default function Page() {
 
   const saveIdentity = useCallback((next: Identity) => {
     setIdentity(next);
-    ecrireIdentite(next);
+    // Un refus du stockage ne doit pas rester muet : la photo resterait à l'écran, portée par
+    // l'état, et disparaîtrait au rechargement suivant sans que rien ne l'ait annoncé.
+    if (!ecrireIdentite(next)) {
+      setToast("Stockage plein — la photo n'a pas pu être gardée");
+    }
   }, []);
 
   const savePreferences = useCallback((prefs: Preferences) => {
