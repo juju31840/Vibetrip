@@ -1,6 +1,7 @@
 "use client";
 
 import { ArrowLeftIcon, CheckIcon } from "@/components/ui/icons";
+import { routeThumbnail } from "@/lib/route-thumbnail";
 import type { Itinerary } from "@/types/itinerary";
 
 interface ProposalsScreenProps {
@@ -102,13 +103,34 @@ function ProposalCard({
   onOpen: () => void;
 }) {
   const confirmed = proposal.steps.filter((step) => step.verified === true).length;
+  const vignette = routeThumbnail(proposal.steps);
 
   return (
     <button
       type="button"
       onClick={onOpen}
-      className="flex gap-3 border-t-2 border-ink py-3.5 text-left transition-colors hover:bg-paper-2"
+      className="flex flex-col border-t-2 border-ink py-3.5 text-left transition-colors hover:bg-paper-2"
     >
+      {/* La forme du parcours, avant les mots. Trois propositions se lisaient jusqu'ici comme
+          trois blocs de texte de même gabarit : on les comparait en lisant, ce qui est
+          exactement l'effort qu'on voulait épargner. Un parcours de quartier et un parcours qui
+          traverse la ville ne se ressemblent pas, et c'est souvent ce qui décide.
+
+          Pas de `loading="lazy"` : les trois vignettes sont visibles d'emblée, et les charger
+          en différé ne ferait que les faire apparaître par à-coups. */}
+      {vignette && (
+        <span className="mb-3 block w-full overflow-hidden border-2 border-ink">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={vignette}
+            alt=""
+            width={400}
+            height={168}
+            className="block h-[168px] w-full object-cover"
+          />
+        </span>
+      )}
+      <span className="flex gap-3">
       <span className="w-7 shrink-0 pt-1 font-display text-[1.5rem] leading-none text-ink-mute">
         {index + 1}
       </span>
@@ -132,6 +154,7 @@ function ProposalCard({
       </span>
       <span aria-hidden className="self-center font-display text-[1.5rem] leading-none text-ink">
         →
+      </span>
       </span>
     </button>
   );

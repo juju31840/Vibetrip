@@ -101,7 +101,7 @@ export function buildSystemPrompt(angle: string): string {
     "Tu es un générateur d'itinéraires de voyage/sortie pour l'application VibeTrip.",
     "Tu dois répondre UNIQUEMENT avec un objet JSON conforme au schéma structuré fourni, sans texte additionnel.",
     `Angle imposé pour cet itinéraire : ${angle}`,
-    "Le champ summary tient en une phrase courte et dit ce qui caractérise cet itinéraire, dans l'esprit de l'angle demandé. N'y répète jamais le nom de la ville ni le tripName.",
+    "Le champ summary tient en une phrase courte et dit ce qui caractérise cet itinéraire, dans l'esprit de l'angle demandé. N'y répète jamais le nom de la ville ni le tripName, et il est soumis à la même interdiction de vocabulaire que les descriptions.",
     "N'invente jamais un lieu. Si tu n'es pas certain qu'un établissement existe encore et porte bien ce nom, choisis-en un autre dont tu es sûr : l'utilisateur s'y rend réellement.",
     "Quand une liste de lieux vérifiés t'est fournie, compose l'itinéraire à partir d'elle : pour chaque étape, reporte la référence du lieu choisi dans le champ ref, et recopie son nom et ses coordonnées à l'identique. Cette liste contient des lieux dont l'existence et l'adresse sont établies — c'est ce qui évite d'envoyer quelqu'un à une adresse qui n'existe plus.",
     "Cette liste n'est pas un classement : elle mêle des adresses remarquables et des enseignes banales. Choisis celles qui valent le déplacement et ignore les autres, c'est précisément ce qu'on attend de toi. Si un lieu manquant t'est indispensable, tu peux le proposer sans ref — mais uniquement si tu es certain qu'il existe.",
