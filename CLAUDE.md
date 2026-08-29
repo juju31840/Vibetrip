@@ -996,6 +996,79 @@ dépense, il ne garde pas une porte**. Le garde-fou contre le contournement est 
 compteur, par adresse, quatre fois plus large. Vérifié : deux appareils sur une même IP gardent
 des quotas distincts.
 
+### Ce que le premier test a révélé (29/08/2026)
+
+Retour après essai par des proches : aucun bug, mais **« temps de chargement long » et « design
+encore trop IA »**. Les deux avaient la même cause, et ce n'était pas le graphisme.
+
+**C'était la prose.** Mesuré sur onze descriptions d'un même itinéraire : « ambiance » cinq fois,
+« convivial » trois, « parfait » trois, « atmosphère » trois — et toujours le même moule, type
+puis deux adjectifs puis « idéal pour » puis moment de la soirée. Des adjectifs interchangeables
+ne décrivent aucun lieu : on ne lit plus une adresse, on reconnaît un gabarit. C'est ce que
+l'utilisateur appelait « on dirait des carrés », et il notait justement que seuls des gens du
+métier le repèrent.
+
+La consigne porte désormais sur le fond — une phrase de moins de quinze mots disant un fait — avec
+une liste explicite de mots interdits. « Restaurant convivial aux ambiances variées, parfait pour
+un dîner sans prétention dans une atmosphère chaleureuse » est devenu « Tartares frais, viandes
+sélectionnées, cuisine simple et généreuse ». L'interdiction vaut aussi pour le `summary`, qui y
+échappait : « conviviale » y revenait aussitôt.
+
+**Le même changement a réglé la latence** : Lyon de 7,6 s à **4,5 s**, Bordeaux week-end de
+15-19 s à **5,1 s**. Moins de texte à écrire, moins de temps d'attente.
+
+### Les images : ce qui a été essayé, et pourquoi la carte
+
+La référence apportée par l'utilisateur était une application de voyage où **la photographie
+occupe 60 à 70 % de l'écran**. C'est ce qui la sauve — le reste (angles arrondis, bleu marine,
+icônes rondes pastel) est le canon générique du genre depuis 2018, c'est-à-dire ce qui avait fait
+abandonner « Carnet ».
+
+**Il n'existe pas de source gratuite de photos de bars et de restaurants**, et les deux pistes ont
+été mesurées :
+- *Wikimedia par géolocalisation* : rend des images du **voisinage**, pas du lieu — pour « La cave
+  d'à côté », le portrait d'une écrivaine au festival Quais du polar. Les afficher serait un
+  mensonge visuel, pire que pas d'image.
+- *Wikimedia par nom*, filtre strict : **8 lieux sur 18**, et seulement parmi les monuments. Un
+  itinéraire étant surtout fait de bars, cela donnerait une photo pour quatre étapes — pas une
+  interface photographique, une incohérence.
+- *Google Places Photos* : exactes, mais **six fois le coût du modèle** par génération (0,084 $
+  contre 0,014 $). Écarté par l'utilisateur.
+
+D'où **la carte du parcours comme image de chaque proposition** : vraie, gratuite dans le quota
+Mapbox, et elle dit ce qu'une photo ne dirait pas — un parcours de quartier et un parcours qui
+traverse la ville ne se ressemblent pas, et c'est souvent ce qui décide. Le titre est posé
+**sur** l'image en bandeau d'encre : c'est le seul geste retenu de la référence.
+
+Trois calages n'ont été trouvés qu'à l'écran : une marge trop large ou un cadre trop plat et
+l'aperçu dézoome jusqu'à empiler les marqueurs en un tas sur « Bordeaux » ; la marge basse doit
+être plus grande que les autres, sans quoi le bandeau masque un marqueur sur écran étroit ; et
+l'emplacement d'attente doit avoir **la forme exacte** d'une carte remplie, sinon la liste saute
+au moment où l'utilisateur y pose le doigt.
+
+### Le signal maison remplace les notes
+
+Cocher « j'y suis allé » incrémente un compteur sur le lieu, et les lieux visités passent devant
+dans leur thème. **Aucune trace individuelle** — ni identifiant, ni date : on cherche à savoir
+qu'un endroit marche, pas qui y va.
+
+Le classement est **binaire** (visité ou non) et non proportionnel : avec des compteurs à zéro ou
+à un, un tri par valeur ne trierait rien, et figerait les mêmes lieux en tête dès qu'ils
+décollent. Sa valeur est différée et assumée — à zéro visite partout il ne change rien, mais
+commencer à compter aujourd'hui, c'est avoir de quoi classer dans un mois.
+
+### L'écran de réglages suit enfin l'ordre de la décision
+
+Il demandait le budget et l'ambiance **avant** de savoir s'il s'agissait d'une soirée ou d'un
+voyage de six jours — or « budget serré » ne veut pas dire la même chose dans les deux cas, et le
+libellé du bouton dépend lui-même du mode. L'ordre est maintenant : quand, où, un filet 3 px,
+puis les nuances (curseurs, envies). Les cinq blocs avaient jusqu'ici le même poids et le même
+intervalle : rien ne disait que les deux premiers déterminent la sortie.
+
+**Le bouton est passé en pied fixe.** Mesuré : 947 px de réglages pour 767 px visibles — l'action
+principale se trouvait sous la ligne de flottaison et rien ne disait qu'il fallait défiler pour
+l'atteindre.
+
 ### Reste à faire
 
 - **Inverser le pipeline** : composer parmi des candidats réels de la base au lieu d'inventer puis

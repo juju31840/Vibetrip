@@ -73,27 +73,22 @@ export function HomeScreen({ draft, onDraftChange, onGenerate }: HomeScreenProps
   }
 
   return (
-    <div className="flex flex-1 flex-col gap-6 overflow-y-auto px-6 pb-6 pt-10">
+    // Le contenu défile, l'action reste. Mesuré : 947 px de réglages pour 767 px visibles —
+    // le bouton se trouvait sous la ligne de flottaison et rien ne disait qu'il fallait
+    // défiler pour l'atteindre. L'action principale d'un écran ne se cherche pas.
+    <div className="flex min-h-0 flex-1 flex-col">
+      <div className="flex flex-1 flex-col gap-6 overflow-y-auto px-6 pb-6 pt-10">
       <div className="flex items-end justify-between border-b-3 border-ink pb-2">
         <h1 className="font-display text-[2.6rem] uppercase leading-[0.85] tracking-[-0.015em] text-ink">
           Vibetrip
         </h1>
       </div>
 
-      <VibeSliders value={draft.vibe} onChange={(vibe) => onDraftChange({ ...draft, vibe })} />
-
-      <section className="flex flex-col gap-2">
-        {/* Placées avec les curseurs et non près du bouton : c'est un réglage de goût, il se
-            décide au même moment que le budget et l'ambiance. */}
-        <h2 className="text-overline uppercase text-ink-soft">
-          Envies <span className="text-ink-mute">— facultatif</span>
-        </h2>
-        <ThemePicker
-          value={draft.themes}
-          onChange={(themes) => onDraftChange({ ...draft, themes })}
-        />
-      </section>
-
+      {/* L'ordre suit celui de la décision, et c'est un changement de fond, pas de mise en page.
+          L'écran demandait le budget et l'ambiance **avant** de savoir s'il s'agissait d'une
+          soirée ou d'un voyage de six jours — or « budget serré » ne veut pas dire la même chose
+          dans les deux cas, et le libellé du bouton lui-même dépend du mode. On décide d'abord
+          quand et d'où, ensuite comment. */}
       <section className="flex flex-col gap-2">
         <h2 className="text-overline uppercase text-ink-soft">Quand</h2>
         <ModeSelector value={draft.mode} onChange={(mode) => onDraftChange({ ...draft, mode })} />
@@ -108,15 +103,41 @@ export function HomeScreen({ draft, onDraftChange, onGenerate }: HomeScreenProps
         />
       </section>
 
-      <Button
-        variant="primary"
-        disabled={!canGenerate}
-        onClick={handleSubmit}
-        className="mt-auto flex h-14 w-full items-center justify-between px-5 text-[1rem]"
-      >
-        <span>{CTA_LABELS[draft.mode]}</span>
-        <ArrowRightIcon className="h-[18px] w-[18px]" />
-      </Button>
+      {/* Une vraie coupure, et non un simple écart. Les cinq blocs avaient jusqu'ici le même
+          poids et le même intervalle : rien ne disait que les deux premiers déterminent la
+          sortie et que les suivants la nuancent. Un filet 3 px, ceux qui séparent les registres
+          ailleurs dans le produit. */}
+      <div className="border-t-3 border-ink" />
+
+      <VibeSliders value={draft.vibe} onChange={(vibe) => onDraftChange({ ...draft, vibe })} />
+
+      <section className="flex flex-col gap-2">
+        {/* Facultatif et placé en dernier : ne rien cocher est un usage normal, et la promesse du
+            produit reste qu'on obtient un programme sans rien construire. */}
+        <h2 className="text-overline uppercase text-ink-soft">
+          Envies <span className="text-ink-mute">— facultatif</span>
+        </h2>
+        <ThemePicker
+          value={draft.themes}
+          onChange={(themes) => onDraftChange({ ...draft, themes })}
+        />
+      </section>
+
+      </div>
+
+      {/* Pied fixe, comme sur l'écran de détail d'une proposition : les deux écrans se terminent
+          par une action unique et engageante, ils doivent la présenter de la même façon. */}
+      <div className="grain shrink-0 border-t-3 border-ink px-6 pb-3 pt-3">
+        <Button
+          variant="primary"
+          disabled={!canGenerate}
+          onClick={handleSubmit}
+          className="flex h-14 w-full items-center justify-between px-5 text-[1rem]"
+        >
+          <span>{CTA_LABELS[draft.mode]}</span>
+          <ArrowRightIcon className="h-[18px] w-[18px]" />
+        </Button>
+      </div>
     </div>
   );
 }
