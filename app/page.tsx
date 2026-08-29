@@ -5,6 +5,7 @@ import { CoverScreen } from "@/components/CoverScreen";
 import { HomeScreen, INITIAL_DRAFT, type HomeDraft } from "@/components/HomeScreen";
 import { SavedScreen } from "@/components/SavedScreen";
 import { ALL_ZONES, MyMapScreen } from "@/components/MyMapScreen";
+import { ProfileScreen } from "@/components/ProfileScreen";
 import { ProposalsScreen } from "@/components/ProposalsScreen";
 import { ProposalDetailScreen } from "@/components/ProposalDetailScreen";
 import { BottomNav, type NavTab } from "@/components/BottomNav";
@@ -18,7 +19,7 @@ import { marquerNote } from "@/lib/ratings-store";
 import { useSavedItineraries } from "@/hooks/useSavedItineraries";
 import { useVisitedPlaces } from "@/hooks/useVisitedPlaces";
 import type { SavedItinerary } from "@/lib/storage";
-import type { Itinerary, ItineraryStep } from "@/types/itinerary";
+import type { Itinerary, ItineraryStep, ThemeId } from "@/types/itinerary";
 
 /** Durée d'affichage de la confirmation : assez pour être lue, assez court pour ne pas gêner. */
 const TOAST_MS = 2600;
@@ -44,6 +45,8 @@ export default function Page() {
    * aller-retour, alors qu'on ne l'a jamais quitté.
    */
   const [mapZone, setMapZone] = useState<string>(ALL_ZONES);
+  /** Incrémenté quand le profil dépose des envies : l'écran de réglages y fait alors défiler. */
+  const [revealThemes, setRevealThemes] = useState(0);
   /** Proposition ouverte en détail, avant validation. */
   const [openedProposal, setOpenedProposal] = useState<Itinerary | null>(null);
   /** Itinéraire de l'historique ouvert en plein écran. */
@@ -117,6 +120,34 @@ export default function Page() {
     [toggleStepDone, recordVisit, forgetVisit]
   );
 
+  /**
+   * Le seul geste du profil, et sa raison d'être : les habitudes observées deviennent les envies
+   * du prochain réglage. Sans lui, l'écran serait un miroir — or un miroir n'a jamais amélioré
+   * une soirée, et c'est très exactement la réserve qui avait tenu cet onglet fermé si longtemps.
+   *
+   * Il **dépose** les envies dans les réglages au lieu de les appliquer en sous-main, et bascule
+   * sur « Créer » pour qu'on les voie cochées. Un profil qui infléchirait les propositions sans
+   * le montrer serait pire qu'un profil décoratif : on ne saurait plus pourquoi on obtient ça.
+   */
+  const applyTastes = useCallback((themes: ThemeId[]) => {
+    setDraft((current) => ({ ...current, themes }));
+    setTab("create");
+    // Le compteur, et non un booléen : appliquer deux fois de suite doit ramener la section à la
+    // vue les deux fois, or un drapeau déjà à `true` ne redéclencherait aucun effet.
+    setRevealThemes((n) => n + 1);
+    setToast("Tes envies sont réglées");
+  }, []);
+
+  /**
+   * Changer d'onglet à la main désarme le renvoi vers les envies. Sans cela le drapeau restait
+   * levé, et l'écran de réglages faisait défiler jusqu'aux envies à **chaque** retour sur
+   * « Créer » — un mouvement qu'on n'a demandé qu'une fois.
+   */
+  const selectTab = useCallback((next: NavTab) => {
+    setRevealThemes(0);
+    setTab(next);
+  }, []);
+
   const backToTabs = useCallback(() => {
     setOpenedId(null);
     setOpenedProposal(null);
@@ -179,7 +210,13 @@ export default function Page() {
     return (
       <main className="flex h-[100dvh] flex-col">
         {tab === "create" && (
-          <HomeScreen draft={draft} onDraftChange={setDraft} onGenerate={generate} />
+          <HomeScreen
+            key={revealThemes}
+            draft={draft}
+            onDraftChange={setDraft}
+            onGenerate={generate}
+            revealThemes={revealThemes > 0}
+          />
         )}
         {tab === "saved" && <SavedScreen items={saved} onOpen={setOpenedId} onRemove={remove} />}
         {/* « Ma carte » reçoit l'historique pour pouvoir rattacher les sorties à la ville
@@ -195,9 +232,12 @@ export default function Page() {
             onOpenItinerary={setOpenedId}
           />
         )}
+        {tab === "profile" && (
+          <ProfileScreen places={places} themes={draft.themes} onApply={applyTastes} />
+        )}
         <BottomNav
           active={tab}
-          onSelect={setTab}
+          onSelect={selectTab}
           badges={{ saved: saved.length, map: places.length }}
         />
       </main>
@@ -216,7 +256,7 @@ export default function Page() {
                   void rateStep(aNoter.step, note);
                   // Mémorisé localement, sans quoi « Mes sorties » redemanderait le même avis :
                   // la base ne retient aucun registre de qui a noté quoi.
-                  marquerNote(aNoter.itineraryId, aNoter.step.id);
+                  marquerNote(aNoter.itineraryId, aNoter.step.id, aNoter.step.placeName, note);
                   // La question posée a reçu sa réponse : on remercie et on s'efface.
                   setToast("Merci, c'est noté");
                   setANoter(null);

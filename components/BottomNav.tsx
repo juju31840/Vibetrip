@@ -1,14 +1,15 @@
 "use client";
 
 import clsx from "clsx";
-import { BookIcon, CompassIcon, HomeIcon } from "@/components/ui/icons";
+import { BookIcon, CompassIcon, HomeIcon, UserIcon } from "@/components/ui/icons";
 
-export type NavTab = "create" | "saved" | "map";
+export type NavTab = "create" | "saved" | "map" | "profile";
 
 const TABS: { value: NavTab; label: string; Icon: (props: { className?: string }) => JSX.Element }[] = [
   { value: "create", label: "Créer", Icon: HomeIcon },
   { value: "saved", label: "Sorties", Icon: BookIcon },
   { value: "map", label: "Ma carte", Icon: CompassIcon },
+  { value: "profile", label: "Profil", Icon: UserIcon },
 ];
 
 interface BottomNavProps {
@@ -22,17 +23,22 @@ interface BottomNavProps {
  * Barre de navigation persistante — c'est elle qui fait qu'une page web se lit comme une
  * application.
  *
- * Trois onglets depuis que « Ma carte » existe. Le troisième onglet avait d'abord été retiré
- * parce qu'il n'aurait ouvert sur rien, et un onglet vide se remarque plus qu'un onglet absent ;
- * la carte des lieux visités lui donne une raison d'être, et son compteur qui monte fait partie
- * de la récompense.
+ * Quatre onglets. Chacun a attendu d'avoir quelque chose à montrer avant d'apparaître : un
+ * onglet vide se remarque plus qu'un onglet absent. « Ma carte » est arrivée quand cocher une
+ * étape a enfin posé un point quelque part ; « Profil » quand ces points ont été assez nombreux
+ * pour dire quelque chose de vrai — et surtout pour **changer** les propositions suivantes.
+ *
+ * À quatre, chaque colonne fait 80 px sur le plus étroit des téléphones (320 px). Les libellés
+ * ont été choisis pour y tenir : « Profil » et non « Mon profil », « Sorties » et non
+ * « Mes sorties » — c'est aussi pour cela que le troisième s'appelle « Ma carte », le seul dont
+ * le possessif était déjà nécessaire pour le distinguer de la carte d'un itinéraire.
  *
  * L'onglet actif est un aplat d'encre pleine hauteur, pas un pictogramme recoloré : dans un
  * système sans ombre ni arrondi, seul le contraste d'aplat distingue nettement.
  */
 export function BottomNav({ active, onSelect, badges = {} }: BottomNavProps) {
   return (
-    <nav className="grain grid shrink-0 grid-cols-3 border-t-3 border-ink pb-[max(1rem,env(safe-area-inset-bottom))]">
+    <nav className="grain grid shrink-0 grid-cols-4 border-t-3 border-ink pb-[max(1rem,env(safe-area-inset-bottom))]">
       {TABS.map(({ value, label, Icon }, index) => {
         const isActive = active === value;
         const badge = badges[value] ?? 0;

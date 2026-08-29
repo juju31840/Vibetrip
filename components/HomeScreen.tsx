@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import { VibeSliders } from "@/components/VibeSliders";
 import { ModeSelector } from "@/components/ModeSelector";
 import { LocationInput } from "@/components/LocationInput";
@@ -55,12 +56,34 @@ const CTA_LABELS: Record<TripMode, string> = {
 
 interface HomeScreenProps {
   draft: HomeDraft;
+  /**
+   * Amène la section « Envies » à la vue au montage. Le profil dépose des envies dans les
+   * réglages puis bascule ici : sans cela on arrivait sur un écran d'apparence inchangée, les
+   * cases cochées se trouvant sous la ligne de flottaison. Un geste dont on ne voit pas l'effet
+   * ne se distingue pas d'un geste sans effet.
+   */
+  revealThemes?: boolean;
   onDraftChange: (draft: HomeDraft) => void;
   onGenerate: (request: GenerateItineraryRequest) => void;
 }
 
-export function HomeScreen({ draft, onDraftChange, onGenerate }: HomeScreenProps) {
+export function HomeScreen({
+  draft,
+  onDraftChange,
+  onGenerate,
+  revealThemes = false,
+}: HomeScreenProps) {
   const canGenerate = draft.location !== null;
+  const themesRef = useRef<HTMLElement>(null);
+
+  // `block: "center"` plutôt que `"start"` : la section est la dernière de la page, l'aligner en
+  // haut la collerait au pied fixe. Le défilement est neutralisé sous `prefers-reduced-motion`,
+  // comme partout ailleurs dans l'application.
+  useEffect(() => {
+    if (!revealThemes) return;
+    const doux = !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    themesRef.current?.scrollIntoView({ behavior: doux ? "smooth" : "auto", block: "center" });
+  }, [revealThemes]);
 
   function handleSubmit() {
     if (!draft.location) return;
@@ -111,7 +134,7 @@ export function HomeScreen({ draft, onDraftChange, onGenerate }: HomeScreenProps
 
       <VibeSliders value={draft.vibe} onChange={(vibe) => onDraftChange({ ...draft, vibe })} />
 
-      <section className="flex flex-col gap-2">
+      <section ref={themesRef} className="flex flex-col gap-2">
         {/* Facultatif et placé en dernier : ne rien cocher est un usage normal, et la promesse du
             produit reste qu'on obtient un programme sans rien construire. */}
         <h2 className="text-overline uppercase text-ink-soft">

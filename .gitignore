@@ -36,3 +36,7 @@ design-canvas/
 # secrets rassemblés pour l'import Vercel — jamais versionné
 vercel-env.txt
 .env.vercel.local
+
+# Captures des vérifications à l'écran
+.playwright-mcp/
+*-390.png

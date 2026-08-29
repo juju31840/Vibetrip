@@ -167,7 +167,7 @@ function ANoter({ items }: { items: SavedItinerary[] }) {
                   aria-label={`Noter ${step.placeName} ${valeur} sur 5`}
                   onClick={() => {
                     void rateStep(step, valeur);
-                    marquerNote(itineraryId, step.id);
+                    marquerNote(itineraryId, step.id, step.placeName, valeur);
                     setFaits((actuels) => [...actuels, `${itineraryId}:${step.id}`]);
                   }}
                   className="px-2 text-[1.6rem] leading-none text-paper-3 transition-colors hover:text-accent"

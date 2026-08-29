@@ -473,9 +473,7 @@ change rien à ce plafond — c'est la limite d'exécution de 60 s qui commande.
 ignorés (musée en étape « Soir »), types parfois incohérents. Le prompt n'a pas encore été révisé
 à la lumière du banc d'essai.
 
-**Onglet Profil / centres d'intérêt** : demandé, pas commencé. La carte personnelle donne
-maintenant la donnée qui le rendrait utile — un profil qui ne change pas visiblement le résultat
-n'est qu'un formulaire décoratif. À rattacher au prompt et à la pondération des thèmes.
+**Onglet Profil : fait** (29/08/2026). Voir la section dédiée plus bas.
 
 **Coaching à partir de la carte** : « tu n'as jamais rien fait rive droite », « tu prends toujours
 des bars ». N'a de sens qu'une fois quelques dizaines de points posés — donc après, pas avant.
@@ -1093,6 +1091,67 @@ l'atteindre.
 - **Cron serveur** (`pg_cron` ou Vercel Cron) pour consommer la file de vérification. Une routine
   Claude ne peut pas être l'infrastructure d'un service : si la base ne se met à jour que quand
   l'ordinateur est allumé, ce n'est pas un produit.
+
+## Onglet Profil (29/08/2026)
+
+Le dernier point ouvert des notes, et le plus longtemps différé — à raison : la réserve inscrite
+ici de longue date était qu'**un profil qui ne change pas visiblement le résultat n'est qu'un
+formulaire décoratif**. Il n'a été ouvert qu'une fois qu'il avait de quoi dire quelque chose de
+vrai (les lieux cochés) *et* de quoi agir (les envies, qui pèsent déjà sur la génération).
+
+**Rien n'est demandé, tout est observé** (`lib/taste.ts`). Un questionnaire aurait recueilli ce
+qu'on croit aimer ; les cases cochées pendant les sorties disent où l'on est allé, ce qui n'est
+pas la même chose et vaut mieux. Aucune saisie, aucun champ, aucun compte.
+
+**Il se tait tant qu'il ne sait pas.** En dessous de 4 passages (`VISITES_MINIMUM`), il n'affiche
+aucun goût — un profil qui se trompe sur vous est pire qu'un profil vide. L'état d'attente dit
+**combien il en manque** plutôt que « pas encore de données » : le vide devient un objectif
+atteignable en une sortie. Il compte des « étapes » et non des « lieux », le compte portant sur
+les passages — deux passages au même endroit ne font qu'un lieu.
+
+**Le geste qui le justifie** : « Appliquer à mes réglages » dépose les deux envies dominantes dans
+l'écran de réglages, et bascule dessus. Il les **dépose** au lieu de les appliquer en sous-main —
+un profil qui infléchirait les propositions sans le montrer serait pire que décoratif, on ne
+saurait plus pourquoi on obtient ça. Deux au plus : présélectionner davantage revient à tout
+cocher, ce qui ne dirige plus rien.
+
+**Les notes sont enfin rendues à qui les a données** (`lib/ratings-store.ts`). Le registre ne
+gardait que le *fait* d'avoir noté, pas la valeur ni le nom : on donnait un avis qu'on ne revoyait
+jamais — le même défaut que cocher une étape sans que rien n'apparaisse nulle part, et un geste
+qui ne rend rien cesse d'être fait. La lecture tolère l'ancien format (chaînes nues, `note: 0`),
+qui reste invisible aux classements sans être effacé : les jeter aurait fait redemander son avis
+à quelqu'un qui l'a déjà donné.
+
+Défauts trouvés **à l'écran** et corrigés (aucun n'était visible dans le code) :
+- *Libellé tronqué* — « BOIRE UN VE… » : placé à gauche de la barre, il tenait dans 96 px. Il
+  occupe désormais sa propre ligne, avec le compte à droite.
+- *Une barre seule ne compare rien.* Le premier jet ne montrait que les goûts au-dessus de 25 %,
+  soit une seule barre à 73 % — qui répète la phrase du dessus en ayant l'air d'un graphique
+  cassé. D'où deux listes distinctes : `gouts` (≥ 25 %, ce qu'on nomme et ce qu'on présélectionne)
+  et `repartition` (tout ce qui a été visité, pour les barres), la section étant masquée en
+  dessous de deux entrées. Même règle que sur la répartition de « Ma carte ».
+- *Le bouton passait sous la barre d'onglets* dès que la liste des notes remplissait l'écran :
+  `mt-auto` ne pousse en bas que **tant qu'il reste de la place**. Passé en `sticky bottom-0`.
+  C'est la troisième occurrence du piège « l'action principale se retrouve hors de vue ».
+- *Le même lieu deux fois* — « dernier lieu coché » redisait ce que la liste des notes nommait
+  déjà. Gardé en repli, affiché seulement quand il n'y a aucune note.
+- *Le geste ne se voyait pas.* Appliquer ses envies basculait sur « Créer »… où les cases cochées
+  se trouvaient sous la ligne de flottaison : l'écran paraissait inchangé, et un geste dont on ne
+  voit pas l'effet ne se distingue pas d'un geste sans effet. `HomeScreen` prend un
+  `revealThemes` qui amène la section à la vue. Deux détails qui comptent : un **compteur** et non
+  un booléen (appliquer deux fois de suite doit défiler les deux fois, or un drapeau déjà à `true`
+  ne redéclenche rien), et un désarmement au changement d'onglet manuel — sinon l'écran défilait
+  vers les envies à *chaque* retour sur « Créer ».
+
+**Quatre onglets, et les libellés ont été choisis pour ça** : 80 px par colonne à 320 px de large.
+« Profil » et non « Mon profil », « Sorties » et non « Mes sorties » — « Ma carte » garde son
+possessif parce qu'il la distingue de la carte d'un itinéraire. Vérifié à 320×568 : aucun libellé
+tronqué, et le bouton d'action atteignable au test de survol réel (`elementFromPoint`, pas un
+clic programmatique — leçon déjà payée sur le bug vaul).
+
+**Reste ouvert** : le coaching (« tu n'as jamais rien fait rive droite ») demande quelques dizaines
+de points, donc plus tard. Et les goûts n'entrent dans le prompt que par le levier des envies
+existant — aucune pondération propre n'a été ajoutée, précisément pour que l'effet reste lisible.
 
 ## Points ouverts (non bloquants)
 
