@@ -38,6 +38,10 @@ export function routeThumbnail(
   // du même quartier devenaient un seul point sur « Bordeaux ». Un `padding` trop court, et les
   // marqueurs des extrémités touchent le bord. Le marqueur Mapbox ayant sa pointe en bas, il
   // déborde vers le haut : la marge doit tenir compte de sa hauteur, pas seulement de sa pointe.
+  //
+  // La marge basse est plus grande que les autres, et c'est délibéré : le titre est posé sur
+  // l'image en bandeau d'encre, qui masquait un marqueur sur les écrans étroits — le cadrage se
+  // resserre quand la carte rétrécit, et le marqueur le plus bas passait dessous.
   const { largeur = 400, hauteur = 168 } = options;
 
   // Sur un long parcours on garde des étapes réparties sur toute sa longueur, et non les
@@ -57,6 +61,6 @@ export function routeThumbnail(
   // entre un parcours de quartier et un parcours qui traverse la ville.
   return (
     `${STATIC_URL}/${marqueurs}/auto/${largeur}x${hauteur}@2x` +
-    `?access_token=${token}&logo=false&attribution=false&padding=34`
+    `?access_token=${token}&logo=false&attribution=false&padding=30,30,74,30`
   );
 }

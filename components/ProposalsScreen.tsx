@@ -72,7 +72,7 @@ export function ProposalsScreen({ proposals, pending = 0, onOpen, onBack }: Prop
         {/* `mt-7` plutôt que `mt-5` : ce bloc bascule du texte d'intro à la liste elle-même,
             une rupture plus nette que celle entre le titre et son accroche — elle mérite un
             écart plus grand, pas le même. */}
-        <div className="mt-7 flex flex-col">
+        <div className="mt-7 flex flex-col gap-4">
           {proposals.map((proposal, index) => (
             <ProposalCard
               key={proposal.id}
@@ -109,18 +109,19 @@ function ProposalCard({
     <button
       type="button"
       onClick={onOpen}
-      className="flex flex-col border-t-2 border-ink py-3.5 text-left transition-colors hover:bg-paper-2"
+      className="group flex w-full flex-col border-2 border-ink text-left shadow-print transition-colors hover:bg-paper-2"
     >
-      {/* La forme du parcours, avant les mots. Trois propositions se lisaient jusqu'ici comme
-          trois blocs de texte de même gabarit : on les comparait en lisant, ce qui est
-          exactement l'effort qu'on voulait épargner. Un parcours de quartier et un parcours qui
-          traverse la ville ne se ressemblent pas, et c'est souvent ce qui décide.
-
-          Pas de `loading="lazy"` : les trois vignettes sont visibles d'emblée, et les charger
-          en différé ne ferait que les faire apparaître par à-coups. */}
-      {vignette && (
-        <span className="mb-3 block w-full overflow-hidden border-2 border-ink">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
+      {/* Le titre est posé SUR la carte, et non sous elle.
+          C'est le seul geste retenu de la référence apportée par l'utilisateur — une application
+          de voyage où l'image occupe l'écran et le texte se pose dessus. Le reste de cette
+          référence (angles arrondis, bleu marine, icônes rondes pastel) est le canon générique
+          des applications de voyage depuis 2018, c'est-à-dire précisément ce qui avait fait
+          abandonner la direction « Carnet ».
+          Le bandeau d'encre pleine règle la lisibilité sans effet de fondu : le système ne connaît
+          que des aplats, jamais de dégradé. */}
+      <span className="relative block w-full">
+        {vignette && (
+          /* eslint-disable-next-line @next/next/no-img-element */
           <img
             src={vignette}
             alt=""
@@ -128,33 +129,41 @@ function ProposalCard({
             height={168}
             className="block h-[168px] w-full object-cover"
           />
+        )}
+
+        {/* Le rang, en pastille d'encre, dans l'angle : il repère la proposition sans occuper
+            une colonne entière comme le faisait le chiffre placé à gauche du texte. */}
+        <span className="absolute left-0 top-0 flex h-8 w-8 items-center justify-center bg-ink font-display text-[1.25rem] leading-none text-paper">
+          {index + 1}
         </span>
-      )}
-      <span className="flex gap-3">
-      <span className="w-7 shrink-0 pt-1 font-display text-[1.5rem] leading-none text-ink-mute">
-        {index + 1}
-      </span>
-      <span className="flex min-w-0 flex-1 flex-col">
-        <span className="font-display text-[1.5rem] uppercase leading-[1.04] tracking-[-0.01em] text-ink">
-          {proposal.tripName}
-        </span>
-        <span className="mt-1.5 text-body text-ink-soft [text-wrap:pretty]">{proposal.summary}</span>
-        <span className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[0.6875rem] font-bold uppercase tracking-[0.08em] text-ink-mute">
-          <span>{proposal.steps.length} étapes</span>
-          {proposal.totalDays > 1 && <span>{proposal.totalDays} jours</span>}
-          {/* Le nombre d'adresses confirmées est une information de choix : à parcours égal,
-              autant retenir celui dont on est le plus sûr qu'il existe. */}
-          {confirmed > 0 && (
-            <span className="inline-flex items-center gap-1 text-blue">
-              <CheckIcon className="h-3 w-3" />
-              {confirmed} confirmée{confirmed > 1 ? "s" : ""}
-            </span>
-          )}
+
+        <span className="absolute inset-x-0 bottom-0 flex flex-col gap-1 bg-ink px-3 py-2">
+          <span className="font-display text-[1.375rem] uppercase leading-[1.04] tracking-[-0.01em] text-paper">
+            {proposal.tripName}
+          </span>
+          <span className="flex flex-wrap items-center gap-x-3 text-[0.625rem] font-bold uppercase tracking-[0.1em] text-paper-3">
+            <span>{proposal.steps.length} étapes</span>
+            {proposal.totalDays > 1 && <span>{proposal.totalDays} jours</span>}
+            {/* À parcours égal, autant retenir celui dont on est le plus sûr qu'il existe. */}
+            {confirmed > 0 && (
+              <span className="inline-flex items-center gap-1 text-paper">
+                <CheckIcon className="h-3 w-3" />
+                {confirmed} confirmée{confirmed > 1 ? "s" : ""}
+              </span>
+            )}
+          </span>
         </span>
       </span>
-      <span aria-hidden className="self-center font-display text-[1.5rem] leading-none text-ink">
-        →
-      </span>
+
+      {/* Le résumé reste hors de l'image : posé dessus, il aurait demandé un second bandeau et
+          mangé la carte, qui est précisément ce qu'on veut donner à voir. */}
+      <span className="flex items-center gap-3 px-3 py-2.5">
+        <span className="min-w-0 flex-1 text-body text-ink-soft [text-wrap:pretty]">
+          {proposal.summary}
+        </span>
+        <span aria-hidden className="shrink-0 font-display text-[1.375rem] leading-none text-ink">
+          →
+        </span>
       </span>
     </button>
   );
@@ -167,19 +176,24 @@ function ProposalCard({
  */
 function PendingCard({ index }: { index: number }) {
   return (
-    <div className="flex gap-3 border-t-2 border-dashed border-ink-mute py-4" aria-hidden>
-      {/* Le numéro et sa gouttière sont ceux d'une vraie carte, et c'est le point : les barres
-          d'attente partaient sinon du bord gauche alors que le titre qu'elles annoncent commence
-          après cette colonne. Un emplacement réservé qui n'a pas la forme de ce qu'il réserve
-          fait justement sauter la liste qu'il était censé stabiliser. */}
-      <span className="w-7 shrink-0 pt-1 font-display text-[1.5rem] leading-none text-paper-3">
-        {index + 1}
-      </span>
-      <div className="flex min-w-0 flex-1 flex-col gap-2.5">
-        <div className="h-5 w-4/5 bg-paper-3 motion-safe:animate-pulse" />
-        <div className="h-3 w-3/5 bg-paper-2 motion-safe:animate-pulse" />
-        <div className="h-3 w-1/4 bg-paper-2 motion-safe:animate-pulse" />
+    <div className="border-2 border-ink shadow-print" aria-hidden>
+      {/* La forme exacte d'une carte remplie — même hauteur d'image, même bandeau d'encre.
+          C'est tout l'intérêt d'un emplacement réservé : s'il n'a pas la forme de ce qu'il
+          réserve, la liste saute au moment où la proposition arrive, c'est-à-dire précisément
+          quand l'utilisateur y pose le doigt. */}
+      <div className="relative h-[168px] w-full bg-paper-2 motion-safe:animate-pulse">
+        <span className="absolute left-0 top-0 flex h-8 w-8 items-center justify-center bg-ink font-display text-[1.25rem] leading-none text-paper">
+          {index + 1}
+        </span>
+        <div className="absolute inset-x-0 bottom-0 flex flex-col gap-1.5 bg-ink px-3 py-3">
+          <div className="h-4 w-3/5 bg-paper-3" />
+          <div className="h-2 w-2/5 bg-ink-soft" />
+        </div>
+      </div>
+      <div className="flex items-center gap-3 px-3 py-3">
+        <div className="h-3 w-4/5 bg-paper-2 motion-safe:animate-pulse" />
       </div>
     </div>
   );
 }
+
