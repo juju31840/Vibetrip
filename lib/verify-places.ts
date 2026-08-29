@@ -118,11 +118,16 @@ async function verifyOne(
 
 /** Applique la vérification à toutes les étapes, par petits lots pour ne pas saturer l'API. */
 /**
- * Une étape déjà ancrée sur le socle de lieux (`lib/places-db.ts`) : son nom, sa coordonnée et son
- * adresse viennent d'un référentiel, pas du modèle. Il n'y a rien à vérifier.
+ * Une étape déjà ancrée sur le socle de lieux (`lib/places-db.ts`) : son nom et sa coordonnée
+ * viennent d'un référentiel, pas du modèle. Il n'y a rien à vérifier.
+ *
+ * Le drapeau est lu tel quel, jamais déduit. Il l'était auparavant de la présence d'une adresse,
+ * ce qui écartait à tort **21 % des lieux du socle** — ceux qui n'en ont pas. Ces étapes,
+ * pourtant ancrées, repassaient par le référentiel Mapbox qui les rejetait, et s'affichaient
+ * « à confirmer » alors qu'elles venaient d'une base de lieux réels.
  */
 function dejaAncree(step: ItineraryStep): boolean {
-  return step.verified === true && Boolean(step.address);
+  return step.anchored === true;
 }
 
 export async function verifySteps(steps: ItineraryStep[]): Promise<ItineraryStep[]> {

@@ -48,6 +48,17 @@ export interface ItineraryStep {
   verified?: boolean | null;
   /** Adresse réelle issue du référentiel, uniquement quand `verified` vaut `true`. */
   address?: string | null;
+  /**
+   * L'étape a été ancrée sur un lieu du socle (`lib/places-db.ts`) : son nom et sa coordonnée
+   * viennent d'un référentiel, il n'y a rien à vérifier.
+   *
+   * Ce drapeau est explicite parce que le déduire coûtait cher : la vérification testait
+   * auparavant la présence d'une adresse, or **21 % des lieux du socle n'en ont pas**. Ces
+   * étapes, pourtant ancrées, repassaient donc par le référentiel Mapbox qui les rejetait —
+   * « Club Zik » et « Prohibition's » à Toulouse existent bel et bien, et s'affichaient comme
+   * non confirmés.
+   */
+  anchored?: boolean;
 }
 
 export interface Itinerary {

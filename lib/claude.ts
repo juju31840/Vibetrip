@@ -118,6 +118,7 @@ async function generateOne(
       location: candidat.location,
       address: candidat.address,
       verified: true,
+      anchored: true,
     };
   });
 

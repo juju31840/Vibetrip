@@ -744,8 +744,21 @@ sur le filtre de plausibilité) → `lib/prompt.ts` injecte la liste dans le pro
 lieu → le modèle renvoie une **référence** (`ref: "L12"`) par étape → `lib/claude.ts` remplace nom,
 coordonnées et adresse par ceux du socle et marque l'étape vérifiée.
 
-**Banc d'essai officiel du 27/08/2026 (`npm run eval`, 7 scénarios, 128 étapes) :
-7/7 scénarios sans anomalie, `89 %` d'adresses confirmées contre 52 % avant l'inversion.**
+**Banc d'essai du 29/08/2026 : 7/7 scénarios, 122 étapes, `100 %` d'adresses confirmées.**
+
+Le passage de 89 % à 100 % tient à **un seul défaut, introduit par la vérification elle-même**.
+`dejaAncree` déduisait l'ancrage de la présence d'une adresse — or **21 % des lieux du socle n'en
+ont pas** (123 170 sur 575 206). Ces étapes, pourtant tirées de la base, repassaient par le
+référentiel Mapbox qui les rejetait, et s'affichaient « à confirmer » : « Club Zik » et
+« Prohibition's » à Toulouse existent bel et bien. Le drapeau `anchored` est désormais posé
+explicitement et lu tel quel, jamais déduit.
+
+Ce que la recherche du défaut a appris, et qui vaut plus que le correctif : le taux du mode
+voyage (80-85 %) semblait venir d'un décrochage du modèle sur dix-huit étapes. Une trace posée
+sur les échecs d'ancrage a montré **zéro décrochage** — le modèle suivait parfaitement le socle,
+et la perte se produisait en aval. Sans cette trace, on aurait ajusté le prompt sans fin.
+
+**Mesure précédente du 27/08 (7 scénarios, 128 étapes) : 89 %**, contre 52 % avant l'inversion.
 
 | Scénario | Étapes | Confirmées |
 |---|---|---|
