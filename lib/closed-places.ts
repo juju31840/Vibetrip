@@ -98,3 +98,34 @@ export async function noteVisit(step: { placeName: string; location: { lat: numb
     // Statistique d'usage : son échec n'a aucune conséquence pour l'utilisateur.
   }
 }
+
+/**
+ * Note un lieu de 1 à 5 — l'actif que ni Google ni TripAdvisor ne possèdent.
+ *
+ * Une photo, tout le monde l'a ; une note donnée par quelqu'un qui est allé sur place grâce à
+ * l'application n'appartient qu'à elle. C'est ce qui fera remonter les bons lieux, et à terme ce
+ * qui distinguera ses propositions de celles d'un moteur généraliste.
+ *
+ * Comme le compteur de visites, rien d'individuel n'est conservé : la base additionne une somme
+ * et un nombre, pas des avis signés.
+ */
+export async function rateStep(
+  step: { placeName: string; location: { lat: number; lng: number } },
+  note: number
+): Promise<void> {
+  if (!URL_BASE || !CLE) return;
+  try {
+    await fetch(`${URL_BASE}/rest/v1/rpc/noter_lieu`, {
+      method: "POST",
+      headers: { apikey: CLE, Authorization: `Bearer ${CLE}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        p_nom: step.placeName,
+        p_lat: step.location.lat,
+        p_lng: step.location.lng,
+        p_note: note,
+      }),
+    });
+  } catch {
+    // Comme le reste des signaux d'usage : son échec ne regarde pas l'utilisateur.
+  }
+}
