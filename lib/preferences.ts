@@ -95,9 +95,27 @@ export function preferencesUtiles(prefs: Preferences | null): boolean {
   return prefs.themes.length > 0 || budget !== 50 || ambiance !== 50 || distance !== 50;
 }
 
-/** Le brouillon suit-il déjà les préférences ? Sert à afficher la case cochée, sans mentir. */
+/**
+ * La ville que « Partir de mes préférences » propose au départ : la première déclarée.
+ *
+ * Arbitraire en apparence, mais c'est celle que l'utilisateur a mise en tête — et il faut bien
+ * en choisir une. `null` quand aucune ville n'est déclarée : la case ne touche alors pas au
+ * champ de départ, plutôt que de l'effacer.
+ */
+export function villeDePreference(prefs: Preferences): string | null {
+  return prefs.cities[0] ?? null;
+}
+
+/**
+ * Le brouillon suit-il déjà les préférences ? Sert à afficher la case cochée, sans mentir.
+ *
+ * La ville en fait partie depuis que la case est passée **au-dessus** du champ de départ : à
+ * cette place elle semble couvrir tout ce qui la suit, et une case qui n'agirait que sur la
+ * moitié de ce qu'elle surplombe serait trompeuse. Conséquence normale : demander sa position
+ * GPS la décoche, puisqu'on ne part alors plus de ses préférences.
+ */
 export function draftSuitPreferences(
-  draft: { vibe: VibeSettings; themes: ThemeId[] },
+  draft: { vibe: VibeSettings; themes: ThemeId[]; cityText: string },
   prefs: Preferences
 ): boolean {
   const memeVibe =
@@ -107,5 +125,7 @@ export function draftSuitPreferences(
   const memesThemes =
     draft.themes.length === prefs.themes.length &&
     prefs.themes.every((t) => draft.themes.includes(t));
-  return memeVibe && memesThemes;
+  const ville = villeDePreference(prefs);
+  const memeVille = ville === null || draft.cityText === ville;
+  return memeVibe && memesThemes && memeVille;
 }

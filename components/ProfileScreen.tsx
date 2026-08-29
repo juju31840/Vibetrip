@@ -79,13 +79,14 @@ export function ProfileScreen({
       {/* La coupure. Pleine largeur et en aplat, donc `-mx` annulé par l'absence de padding sur
           le conteneur : c'est ce qui la fait lire comme un changement de chapitre et non comme
           une ligne de plus dans la même page. */}
-      <div className="mt-7 flex items-baseline justify-between border-y-3 border-ink bg-ink px-6 py-2.5">
+      {/* La bande porte le titre, et rien d'autre. Elle a un temps affiché « observé » à droite :
+          le mot ne disait rien que le titre ne dise déjà, et un coin droit qui n'informe pas est
+          exactement ce qui avait fait retirer les numéros des trois mastheads d'onglet. Aucun
+          pictogramme non plus — la bande d'encre suffit à marquer le changement de chapitre. */}
+      <div className="mt-7 border-y-3 border-ink bg-ink px-6 py-2.5">
         <h2 className="font-display text-[1.35rem] uppercase leading-[0.9] tracking-[-0.01em] text-paper">
           Ce qu&apos;on a compris
         </h2>
-        <span className="text-[0.625rem] font-bold uppercase tracking-[0.14em] text-paper/60">
-          observé
-        </span>
       </div>
 
       <div className="flex flex-1 flex-col gap-6 px-6 pt-5">
@@ -330,9 +331,15 @@ function Preferencier({
   prefs: Preferences;
   onChange: (prefs: Preferences) => void;
 }) {
+  // `gap-5` entre les sous-blocs : à 16 px, « Tes villes » n'avait pas plus d'air au-dessus de
+  // lui que ses propres étiquettes n'en avaient sous leur intitulé — les deux niveaux de
+  // hiérarchie se confondaient.
   return (
-    <section className="flex flex-col gap-4 border-2 border-ink bg-paper-2 p-4">
-      <div className="flex flex-col gap-1">
+    <section className="flex flex-col gap-5 border-2 border-ink bg-paper-2 p-4">
+      {/* `gap-2.5` et non `gap-1` : Anton posé à `leading-[0.9]` laisse très peu d'air sous ses
+          capitales, si bien que la phrase paraissait accrochée au titre. L'interlignage serré est
+          juste pour le titre lui-même, il ne vaut pas pour l'écart au bloc suivant. */}
+      <div className="flex flex-col gap-2.5">
         <h2 className="font-display text-[1.35rem] uppercase leading-[0.9] tracking-[-0.01em] text-ink">
           Tes préférences
         </h2>

@@ -7,7 +7,7 @@ import { ModeSelector } from "@/components/ModeSelector";
 import { LocationInput } from "@/components/LocationInput";
 import { ThemePicker } from "@/components/ThemePicker";
 import { CheckIcon } from "@/components/ui/icons";
-import { draftSuitPreferences, type Preferences } from "@/lib/preferences";
+import { draftSuitPreferences, villeDePreference, type Preferences } from "@/lib/preferences";
 import { Button } from "@/components/ui/Button";
 import { ArrowRightIcon } from "@/components/ui/icons";
 import type {
@@ -89,6 +89,7 @@ export function HomeScreen({
   const canGenerate = draft.location !== null;
   const themesRef = useRef<HTMLElement>(null);
   const suitPreferences = preferences ? draftSuitPreferences(draft, preferences) : false;
+  const villePref = preferences ? villeDePreference(preferences) : null;
 
   // `block: "center"` plutôt que `"start"` : la section est la dernière de la page, l'aligner en
   // haut la collerait au pied fixe. Le défilement est neutralisé sous `prefers-reduced-motion`,
@@ -131,40 +132,40 @@ export function HomeScreen({
         <ModeSelector value={draft.mode} onChange={(mode) => onDraftChange({ ...draft, mode })} />
       </section>
 
-      <section className="flex flex-col gap-2">
-        <h2 className="text-overline uppercase text-ink-soft">Au départ de</h2>
-        <LocationInput
-          value={draft.location}
-          cityText={draft.cityText}
-          onChange={({ value, cityText }) => onDraftChange({ ...draft, location: value, cityText })}
-          suggestedCities={preferredCities}
-        />
-      </section>
+      {/* Placée **avant** le champ de départ, et non après les curseurs comme au premier jet :
+          à l'ancienne place, la ville semblait exclue de « mes préférences » alors qu'elle en
+          fait partie. Ce déplacement l'a obligée à devenir vraie sur ce point — elle renseigne
+          désormais aussi la ville, faute de quoi elle surplomberait un champ qu'elle ne touche
+          pas. Elle laisse en revanche le mode : « ce soir » ou « voyage » tient à l'occasion,
+          pas à un goût.
 
-      {/* Une vraie coupure, et non un simple écart. Les cinq blocs avaient jusqu'ici le même
-          poids et le même intervalle : rien ne disait que les deux premiers déterminent la
-          sortie et que les suivants la nuancent. Un filet 3 px, ceux qui séparent les registres
-          ailleurs dans le produit. */}
-      <div className="border-t-3 border-ink" />
-
-      {/* La case porte sur tout ce qui la suit — curseurs et envies — donc elle les précède.
-          Cocher applique, décocher revient au réglage neutre : symétrique et réversible, alors
-          qu'un bouton n'aurait laissé aucun moyen de revenir en arrière. Et son état n'est pas
-          gardé à part mais **déduit** du brouillon : toucher un curseur la décoche d'elle-même,
-          parce que le réglage a cessé de suivre les préférences. Une case qui resterait cochée
-          en mentant serait pire que pas de case. */}
+          Cocher applique, décocher revient au réglage neutre : symétrique et réversible, là où
+          un bouton n'aurait laissé aucun retour en arrière. Et son état est **déduit** du
+          brouillon, jamais gardé à part — toucher un curseur ou demander sa position la décoche
+          d'elle-même, parce que le réglage a cessé de suivre les préférences. Une case qui
+          resterait cochée en mentant serait pire que pas de case. */}
       {preferences && (
         <button
           type="button"
           role="checkbox"
           aria-checked={suitPreferences}
-          onClick={() =>
-            onDraftChange(
-              suitPreferences
-                ? { ...draft, vibe: INITIAL_DRAFT.vibe, themes: [] }
-                : { ...draft, vibe: preferences.vibe, themes: preferences.themes }
-            )
-          }
+          onClick={() => {
+            if (suitPreferences) {
+              onDraftChange({
+                ...draft,
+                vibe: INITIAL_DRAFT.vibe,
+                themes: [],
+                ...(villePref ? { location: null, cityText: "" } : {}),
+              });
+              return;
+            }
+            onDraftChange({
+              ...draft,
+              vibe: preferences.vibe,
+              themes: preferences.themes,
+              ...(villePref ? { location: { city: villePref }, cityText: villePref } : {}),
+            });
+          }}
           className="flex items-center gap-3 border-2 border-ink px-3.5 py-3 text-left transition-colors hover:bg-paper-2"
         >
           <span
@@ -181,6 +182,22 @@ export function HomeScreen({
           </span>
         </button>
       )}
+
+      <section className="flex flex-col gap-2">
+        <h2 className="text-overline uppercase text-ink-soft">Au départ de</h2>
+        <LocationInput
+          value={draft.location}
+          cityText={draft.cityText}
+          onChange={({ value, cityText }) => onDraftChange({ ...draft, location: value, cityText })}
+          suggestedCities={preferredCities}
+        />
+      </section>
+
+      {/* Une vraie coupure, et non un simple écart. Les cinq blocs avaient jusqu'ici le même
+          poids et le même intervalle : rien ne disait que les deux premiers déterminent la
+          sortie et que les suivants la nuancent. Un filet 3 px, ceux qui séparent les registres
+          ailleurs dans le produit. */}
+      <div className="border-t-3 border-ink" />
 
       <VibeSliders value={draft.vibe} onChange={(vibe) => onDraftChange({ ...draft, vibe })} />
 

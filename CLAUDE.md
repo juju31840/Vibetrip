@@ -1220,6 +1220,23 @@ six communes les plus peuplées de France, c'est-à-dire les villes de tout le m
 personne : qui sort à Tours et à Angers n'a que faire de Marseille en un geste. Quatre au plus —
 au-delà ce n'est plus une référence mais une liste, et les raccourcis prendraient deux lignes.
 
+**La case est passée au-dessus du champ de départ** (29/08/2026, soir), sur remarque de
+l'utilisateur : à sa place initiale — après les curseurs — la ville semblait exclue de « mes
+préférences » alors qu'elle en fait partie. Le déplacement l'a **obligée à devenir vraie sur ce
+point** : elle renseigne désormais aussi la ville (la première déclarée), faute de quoi elle
+surplomberait un champ qu'elle ne touche pas. Elle laisse en revanche le mode — « ce soir » ou
+« voyage » tient à l'occasion, pas à un goût. Effet secondaire correct : demander sa position GPS
+la décoche, puisqu'on ne part alors plus de ses préférences.
+
+**Deux retouches de composition faites au même moment**, toutes deux signalées à l'œil :
+- le sous-titre des préférences était **collé au titre** — Anton posé à `leading-[0.9]` laisse
+  très peu d'air sous ses capitales, et l'interlignage serré, juste pour le titre lui-même, ne
+  vaut pas pour l'écart au bloc suivant (`gap-1` → `gap-2.5`) ;
+- la mention « observé » à droite de la bande d'encre est **supprimée**. Elle ne disait rien que
+  le titre ne dise déjà, et un coin droit qui n'informe pas est exactement ce qui avait fait
+  retirer les numéros des trois mastheads d'onglet. Pas de pictogramme en remplacement : la bande
+  suffit à marquer le changement de chapitre, et le système bannit les emojis.
+
 **Défaut trouvé à l'écran et corrigé** : la case « Partir de mes préférences » s'affichait **déjà
 cochée** devant quelqu'un qui n'avait réglé que ses villes. Elle ne mentait pas — le brouillon
 suivait bien des préférences par ailleurs neutres — mais elle avait l'air d'un état actif que
